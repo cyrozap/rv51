@@ -67,9 +67,9 @@ decode_opcode:
 	lcall	exec_lui
 	sjmp	decode_done
 decode_0:
-	;cjne	a, #0x13, decode_7  ; OP-IMM
-	;lcall	exec_op_imm
-	;sjmp	decode_done
+	cjne	a, #0x13, decode_7  ; OP-IMM
+	lcall	exec_op_imm
+	sjmp	decode_done
 decode_7:
 	sjmp	.
 decode_done:
@@ -77,66 +77,56 @@ decode_done:
 
 exec_op_imm:
 	lcall	extract_rd
+
+	; Return early if we're writing the zero register.
+	mov	a, rd
+	cjne	a, #0, exec_op_imm_rd_not_zero
+	ret
+
+exec_op_imm_rd_not_zero:
 	lcall	extract_funct3
 	lcall	extract_rs1
-
-	; Read the RV source register into r7:r6:r5:r4.
-	lcall	rv_reg_read
-
-	; Get the IRAM offset of the RV register.
-	pop	a  ; rd
-
-	; Now you have:
-	; r0 = funct3
-	; a = IRAM offset of rd
-	; r7:r6:r5:r4 = rs
+	lcall	extract_imm_11_0
 
 	; Compare funct3.
-	cjne	r0, #7, exec_op_imm_7  ; ANDI
+	mov	a, funct3
+	cjne	a, #7, exec_op_imm_7  ; ANDI
 	lcall	exec_andi
 	sjmp	exec_op_imm_done
-
 exec_op_imm_7:
 	sjmp	.
 exec_op_imm_done:
 	ret
 
 exec_andi:
-	; Store rd in r0.
-	mov	r0, a
+	; Load the dst and src addresses into R0 and R1, respectively.
+	lcall	set_dst_to_rd_iram_addr
+	lcall	set_src_to_rs1_iram_addr
 
-	; rotate right R3:R2 by 4
-	MOV A, R2
-	XRL A, R3
-	ANL A, #0xf0
-	XCH A, R3
-	XRL A, R3
-	SWAP A
-	XCH A, R2
-	XRL A, R3
-	SWAP A
-	;MOV R3, A
+	; For each byte in the source and destination registers, AND the
+	; source byte with the corresponding immediate byte and store
+	; the result in the corresponding destination byte.
+	mov	a, @R1
+	anl	a, immediate_0
+	mov	@R0, a
+	inc	R1
+	inc	R0
 
-	; ANL r5 with the top 4 bits of the immediate and store in r2.
-	anl	a, #0x0F
-	orl	a, #0xF0
-	anl	a, r5
-	xch	a, r2
+	mov	a, @R1
+	anl	a, immediate_1
+	mov	@R0, a
+	inc	R1
+	inc	R0
 
-	; ANL the bottom byte of the immediate with r4 and store in A.
-	anl	a, r4
+	mov	a, @R1
+	anl	a, immediate_2
+	mov	@R0, a
+	inc	R1
+	inc	R0
 
-	; Copy r7:r6:r2:a into rd.
-	mov	@r0, a
-	inc	r0
-	mov	a, r2
-	mov	@r0, a
-	inc	r0
-	mov	a, r6
-	mov	@r0, a
-	inc	r0
-	mov	a, r7
-	mov	@r0, a
+	mov	a, @R1
+	anl	a, immediate_3
+	mov	@R0, a
 
 	ret
 
@@ -180,6 +170,32 @@ set_dst_to_rd_iram_addr:
 
 	ret
 
+set_src_to_rs2_iram_addr:
+	; Load the register number into A.
+	mov	a, rs2
+
+	; Jump to the common routine.
+	sjmp	set_src_to_rsN_iram_addr
+
+set_src_to_rs1_iram_addr:
+	; Load the register number into A.
+	mov	a, rs1
+
+	; Fall through to the common routine.
+
+set_src_to_rsN_iram_addr:
+	; Multiply the RV reg number by 4 to get the IRAM offset.
+	rl	a
+	rl	a
+
+	; Add 0x80 to get the offset in the upper IRAM registers.
+	add	a, #0x80
+
+	; Set the source address to the final register offset.
+	mov	R1, a
+
+	ret
+
 rv_rd_read:
 	mov	a, rd
 	sjmp	rv_reg_read
@@ -216,6 +232,43 @@ rv_reg_read_nonzero:
 	mov	r7, a
 	ret
 
+extract_imm_11_0:
+	; Copy the two highest instruction bytes to R3:R2.
+	mov	R2, instruction_2
+	mov	R3, instruction_3
+
+	; rotate right R3:R2 by 4
+	MOV A, R2
+	XRL A, R3
+	ANL A, #0xf0
+	XCH A, R3
+	XRL A, R3
+	SWAP A
+	XCH A, R2
+	XRL A, R3
+	SWAP A
+	;MOV R3, A
+
+	; Store the result in immediate_1:immediate_0.
+	mov	immediate_0, R2
+	mov	immediate_1, a
+
+	; Extend the sign.
+	jb	(((instruction_3 - 0x20) * 8) + 7), extract_imm_11_0_negative
+
+	; Positive
+	anl	immediate_1, #0x0F
+	mov	immediate_2, #0x00
+	mov	immediate_3, #0x00
+	ret
+
+extract_imm_11_0_negative:
+	; Negative
+	orl	immediate_1, #0xF0
+	mov	immediate_2, #0xFF
+	mov	immediate_3, #0xFF
+	ret
+
 extract_imm_31_12:
 	; Set the lowest byte to zero.
 	mov	immediate_0, #0
@@ -248,12 +301,16 @@ extract_rs1:
 	orl	a, R2
 	rl	a
 
+	; Store the result in rs1.
+	mov	rs1, a
+
 	ret
 
 extract_funct3:
-	mov	a, r1
+	mov	a, instruction_1
 	anl	a, #0x70
 	swap	a
+	mov	funct3, a
 	ret
 
 extract_rd:
