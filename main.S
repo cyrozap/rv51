@@ -11,6 +11,9 @@
 ; - Only the "set_dst_to_rd_iram_addr" function can modify R0.
 ; - Only the "set_src_to_rs1_iram_addr" and "set_src_to_rs2_iram_addr"
 ;   functions can modify R1.
+; - Only the "rv_calc_pc" function can modify rv_pc_[0-1].
+
+rv_rom_base = 0x80000000
 
 ; Global variables
 instruction_0	= 0x20
@@ -38,6 +41,8 @@ rs2_dat0	= 0x38
 rs2_dat1	= 0x39
 rs2_dat2	= 0x3A
 rs2_dat3	= 0x3B
+rv_pc_0	= 0x3C
+rv_pc_1	= 0x3D
 
 	.area	XSEG	(XDATA)
 	.area	PSEG	(PAG,XDATA)
@@ -70,6 +75,10 @@ decode_opcode:
 	lcall	exec_lui
 	sjmp	decode_done
 decode_0:
+	cjne    a, #0x17, decode_1  ; AUIPC
+	lcall   exec_auipc
+	sjmp    decode_done
+decode_1:
 	cjne	a, #0x13, decode_7  ; OP-IMM
 	lcall	exec_op_imm
 	sjmp	decode_done
@@ -161,6 +170,42 @@ exec_andi:
 
 	mov	a, @R1
 	anl	a, immediate_3
+	mov	@R0, a
+
+	ret
+
+exec_auipc:
+	lcall	extract_rd
+
+	; Return early if we're writing the zero register.
+	mov	a, rd
+	cjne	a, #0, exec_lui_rd_not_zero
+	ret
+
+exec_auipc_rd_not_zero:
+	lcall	extract_imm_31_12
+	lcall	rv_calc_pc
+
+	; Write the immediate directly to rd.
+	lcall	set_dst_to_rd_iram_addr
+
+	; We know the lowest byte of the immediate is zero, so we can
+	; write the lowest byte of the PC to the destination directly.
+	mov	@R0, rv_pc_0
+	inc	R0
+
+	mov	a, rv_pc_1
+	add	a, immediate_1
+	mov	@R0, a
+	inc	R0
+
+	mov	a, #(rv_rom_base >> 16)
+	addc	a, immediate_2
+	mov	@R0, a
+	inc	R0
+
+	mov	a, #(rv_rom_base >> 24)
+	addc	a, immediate_3
 	mov	@R0, a
 
 	ret
@@ -265,6 +310,16 @@ rv_reg_read_nonzero:
 	inc	r0
 	mov	a, @r0
 	mov	r7, a
+	ret
+
+rv_calc_pc:
+	mov	a, dpl
+	clr	c
+	subb	a, #(rv_code)
+	mov	rv_pc_0, a
+	mov	a, dph
+	subb	a, #(rv_code >> 8)
+	mov	rv_pc_1, a
 	ret
 
 extract_imm_11_0:
