@@ -276,42 +276,6 @@ set_src_to_rsN_iram_addr:
 
 	ret
 
-rv_rd_read:
-	mov	a, rd
-	sjmp	rv_reg_read
-
-; IN: A
-rv_reg_read:
-	; Check if we're reading the zero register.
-	cjne	a, #0, rv_reg_read_nonzero
-	mov	r4, a
-	mov	r5, a
-	mov	r6, a
-	mov	r7, a
-	ret
-
-rv_reg_read_nonzero:
-	; Multiply the RV reg number by 4 to get the IRAM offset.
-	rl	a
-	rl	a
-
-	; Add 0x80 to get the offset in the upper IRAM registers.
-	add	a, #0x80
-
-	mov	r0, a
-	mov	a, @r0
-	mov	r4, a
-	inc	r0
-	mov	a, @r0
-	mov	r5, a
-	inc	r0
-	mov	a, @r0
-	mov	r6, a
-	inc	r0
-	mov	a, @r0
-	mov	r7, a
-	ret
-
 rv_calc_pc:
 	mov	a, dpl
 	clr	c
