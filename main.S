@@ -1,3 +1,41 @@
+; Rules and conventions:
+; - R0 is the IRAM destination pointer.
+; - R1 is the IRAM source pointer.
+; - All multi-byte values are little-endian.
+; - A, B, and C can be clobbered by any function.
+; - DPTR points to the next RV instruction in CODE/PMEM.
+; - RV's PC = 0x80000000 + (DPTR - #rv_code)
+; - Instruction execution functions are each responsible for extracting
+;   their parameters from their instructions.
+; - Only the "fetch_instruction" function can modify instruction_[0-3].
+
+; Global variables
+instruction_0	= 0x20
+instruction_1	= 0x21
+instruction_2	= 0x22
+instruction_3	= 0x23
+rd	= 0x24
+funct3	= 0x25
+rs1	= 0x26
+rs2	= 0x27
+funct7	= 0x2C
+immediate_0	= 0x28
+immediate_1	= 0x29
+immediate_2	= 0x2A
+immediate_3	= 0x2B
+rd_dat0	= 0x30
+rd_dat1	= 0x31
+rd_dat2	= 0x32
+rd_dat3	= 0x33
+rs1_dat0	= 0x34
+rs1_dat1	= 0x35
+rs1_dat2	= 0x36
+rs1_dat3	= 0x37
+rs2_dat0	= 0x38
+rs2_dat1	= 0x39
+rs2_dat2	= 0x3A
+rs2_dat3	= 0x3B
+
 	.area	XSEG	(XDATA)
 	.area	PSEG	(PAG,XDATA)
 	.area	HOME	(ABS,CODE)
@@ -8,14 +46,11 @@ reset:
 
 init:
 	; Set stack pounter to scratch pad area.
-	mov	sp, #0x30
-	; Use dptr as the RV's PC (offset by #rvcode) and fetch the
-	; first RV instruction.
-	mov	dptr, #(rvcode)
+	mov	sp, #0x40
+	; Use dptr as the RV's PC, offset by #rv_code.
+	mov	dptr, #(rv_code)
 emu_loop:
-	lcall	fetch_dword
-	mov	0x20, r0  ; Move the opcode into a bit-addressable register.
-	clr	7
+	lcall	fetch_instruction
 	lcall	decode_opcode
 	sjmp	emu_loop
 
@@ -23,35 +58,26 @@ emu_loop:
 busy_loop:
 	sjmp	.
 
-; IN: 0x20, r3:r2:r1:r0
 decode_opcode:
-	push	a
-	mov	a, 0x20
+	; Extract the opcode from the first byte of the instruction.
+	mov	a, instruction_0
+	anl	a, #0x7F
+	; Opcode dispatch.
 	cjne	a, #0x37, decode_0  ; LUI
 	lcall	exec_lui
 	sjmp	decode_done
 decode_0:
-	cjne	a, #0x13, decode_7  ; OP-IMM
-	lcall	exec_op_imm
-	sjmp	decode_done
+	;cjne	a, #0x13, decode_7  ; OP-IMM
+	;lcall	exec_op_imm
+	;sjmp	decode_done
 decode_7:
 	sjmp	.
 decode_done:
-	pop	a
 	ret
 
-; IN: 0x20, r3:r2:r1:r0
-; Clobbers: a, c, r1:r0, r7:r6:r5:r4
 exec_op_imm:
-	; Extract rd and store it on the stack.
 	lcall	extract_rd
-	push	a
-
-	; Extract funct3 and store it in r0.
 	lcall	extract_funct3
-	mov	r0, a
-
-	; Extract rs1 and store it in A.
 	lcall	extract_rs1
 
 	; Read the RV source register into r7:r6:r5:r4.
@@ -59,7 +85,6 @@ exec_op_imm:
 
 	; Get the IRAM offset of the RV register.
 	pop	a  ; rd
-	lcall	get_rv_reg_offset
 
 	; Now you have:
 	; r0 = funct3
@@ -76,9 +101,6 @@ exec_op_imm_7:
 exec_op_imm_done:
 	ret
 
-; IN: a, r3:r2, r7:r6:r5:r4
-; OUT: rd[0:4]
-; Clobbers: a, r3:r2
 exec_andi:
 	; Store rd in r0.
 	mov	r0, a
@@ -118,46 +140,51 @@ exec_andi:
 
 	ret
 
-; IN: 0x20, r3:r2:r1:r0
-; Clobbers: a, c, r1:r0
 exec_lui:
-	; Extract rd and store it in A.
 	lcall	extract_rd
 
-	; Get the IRAM offset of the RV register.
-	lcall	get_rv_reg_offset
+	; Return early if we're writing the zero register.
+	mov	a, rd
+	cjne	a, #0, exec_lui_rd_not_zero
+	ret
 
-	; Move the pointer into r0 so we can access the memory,
-	mov	r0, a
+exec_lui_rd_not_zero:
+	lcall	extract_imm_31_12
 
-	; Set the lowest byte to zero.
-	mov	@r0, #0
 
-	; Increment the pointer to point to the 2nd byte.
-	inc	r0
-
-	; ANL the R1 byte with 0xF0.
-	mov	a, r1
-	anl	a, #0xF0
-
-	; Store the result in r0.
-	mov	@r0, a
-
-	; Increment the pointer to point to the 3rd byte.
-	inc	r0
-
-	; Bytes R3:R2 get stored into the top two bytes of the RV reg.
-	mov	a, r2
-	mov	@r0, a
-	inc	r0
-	mov	a, r3
-	mov	@r0, a
+	; Write the immediate directly to rd.
+	lcall	set_dst_to_rd_iram_addr
+	mov	@R0, immediate_0
+	inc	R0
+	mov	@R0, immediate_1
+	inc	R0
+	mov	@R0, immediate_2
+	inc	R0
+	mov	@R0, immediate_3
 
 	ret
 
-; IN: a
-; OUT: r7:r6:r5:r4
-; Clobbers: a
+set_dst_to_rd_iram_addr:
+	; Load the register number into A.
+	mov	a, rd
+
+	; Multiply the RV reg number by 4 to get the IRAM offset.
+	rl	a
+	rl	a
+
+	; Add 0x80 to get the offset in the upper IRAM registers.
+	add	a, #0x80
+
+	; Set the destination address to the final register offset.
+	mov	R0, a
+
+	ret
+
+rv_rd_read:
+	mov	a, rd
+	sjmp	rv_reg_read
+
+; IN: A
 rv_reg_read:
 	; Check if we're reading the zero register.
 	cjne	a, #0, rv_reg_read_nonzero
@@ -168,11 +195,12 @@ rv_reg_read:
 	ret
 
 rv_reg_read_nonzero:
-	ar0	= 0
-	push	ar0
+	; Multiply the RV reg number by 4 to get the IRAM offset.
+	rl	a
+	rl	a
 
-	; Get the IRAM offset of the RV register.
-	lcall	get_rv_reg_offset
+	; Add 0x80 to get the offset in the upper IRAM registers.
+	add	a, #0x80
 
 	mov	r0, a
 	mov	a, @r0
@@ -186,87 +214,84 @@ rv_reg_read_nonzero:
 	inc	r0
 	mov	a, @r0
 	mov	r7, a
-	pop	ar0
 	ret
 
-; IN: a
-; OUT: a
-get_rv_reg_offset:
-	; Multiply the RV reg number by 4 to get the IRAM offset.
-	rl	a
-	rl	a
+extract_imm_31_12:
+	; Set the lowest byte to zero.
+	mov	immediate_0, #0
 
-	; Add 0x80 to get the offset in the upper IRAM registers.
-	add	a, #0x80
+	; ANL the instruction_1 byte with 0xF0.
+	mov	a, instruction_1
+	anl	a, #0xF0
+
+	; Store the result in immediate_1.
+	mov	immediate_1, a
+
+	; Bytes instruction_3:instruction_2 get stored into the top two bytes of the immediate.
+	mov	immediate_2, instruction_2
+	mov	immediate_3, instruction_3
 
 	ret
 
-; IN: r2:r1
-; OUT: a
-; Clobbers: r1
 extract_rs1:
-	ar1	= 0x01
+	ar2	= 0x02
+	mov	R2, instruction_1
 
 	; ANL R1 with 0x80 to get the bottom bit of rs1.
-	anl	ar1, #0x80
+	anl	ar2, #0x80
 
 	; ANL R2 with 0x0F to get the top four bits of rs1.
-	mov	a, r2
+	mov	a, instruction_2
 	anl	a, #0x0F
 
 	; ORL the two registers, then rotate left to get rs1.
-	orl	a, r1
+	orl	a, R2
 	rl	a
 
 	ret
 
-; IN: r1
-; OUT: a
 extract_funct3:
 	mov	a, r1
 	anl	a, #0x70
 	swap	a
 	ret
 
-; IN: r1:r0
-; OUT: a
-; Clobbers: c, r0
 extract_rd:
-	; Rotate R1:R0 left by 1.
-	MOV	A, R1
-	MOV	C, ACC.7
-	XCH	A, R0
-	RLC	A
-	XCH	A, R0
-	RLC	A
-	;MOV	R1, A
+	mov	R2, instruction_0
 
-	; Extract the RV reg number from R1.
+	; Rotate instruction_1:R2 left by 1.
+	MOV	A, instruction_1
+	MOV	C, ACC.7
+	XCH	A, R2
+	RLC	A
+	XCH	A, R2
+	RLC	A
+
+	; Extract the RV reg number from R3.
 	anl	a, #0x1F
 
+	; Copy the result to rd.
+	mov	rd, a
+
 	ret
 
-; IN:   dptr
-; OUT:  r3:r2:r1:r0, dptr+=4
-fetch_dword:
-	push	a
+fetch_instruction:
 	clr	a
 	movc	a, @a+dptr
-	mov	r0, a
+	mov	instruction_0, a
 	inc	dptr
 	clr	a
 	movc	a, @a+dptr
-	mov	r1, a
+	mov	instruction_1, a
 	inc	dptr
 	clr	a
 	movc	a, @a+dptr
-	mov	r2, a
+	mov	instruction_2, a
 	inc	dptr
 	clr	a
 	movc	a, @a+dptr
-	mov	r3, a
+	mov	instruction_3, a
 	inc	dptr
-	pop	a
 	ret
 
-rvcode:
+rv_code:
