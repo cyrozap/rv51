@@ -53,7 +53,7 @@ reset:
 	sjmp	.
 
 init:
-	; Set stack pounter to scratch pad area.
+	; Set stack pointer to scratch pad area.
 	mov	sp, #0x40
 	; Use dptr as the RV's PC, offset by #rv_code.
 	mov	dptr, #(rv_code)
