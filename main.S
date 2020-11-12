@@ -35,6 +35,7 @@ decode_0:
 	lcall	exec_op_imm
 	sjmp	decode_done
 decode_7:
+	sjmp	.
 decode_done:
 	pop	a
 	ret
@@ -71,6 +72,7 @@ exec_op_imm:
 	sjmp	exec_op_imm_done
 
 exec_op_imm_7:
+	sjmp	.
 exec_op_imm_done:
 	ret
 
