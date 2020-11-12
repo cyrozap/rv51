@@ -8,6 +8,9 @@
 ; - Instruction execution functions are each responsible for extracting
 ;   their parameters from their instructions.
 ; - Only the "fetch_instruction" function can modify instruction_[0-3].
+; - Only the "set_dst_to_rd_iram_addr" function can modify R0.
+; - Only the "set_src_to_rs1_iram_addr" and "set_src_to_rs2_iram_addr"
+;   functions can modify R1.
 
 ; Global variables
 instruction_0	= 0x20
@@ -88,6 +91,10 @@ exec_op_imm_rd_not_zero:
 	lcall	extract_rs1
 	lcall	extract_imm_11_0
 
+	; Load the dst and src addresses into R0 and R1, respectively.
+	lcall	set_dst_to_rd_iram_addr
+	lcall	set_src_to_rs1_iram_addr
+
 	; Compare funct3.
 	mov	a, funct3
 	cjne	a, #0, exec_op_imm_0  ; ADDI
@@ -103,10 +110,6 @@ exec_op_imm_done:
 	ret
 
 exec_addi:
-	; Load the dst and src addresses into R0 and R1, respectively.
-	lcall	set_dst_to_rd_iram_addr
-	lcall	set_src_to_rs1_iram_addr
-
 	; For each byte in the source and destination registers, ADD the
 	; source byte with the corresponding immediate byte and store
 	; the result in the corresponding destination byte.
@@ -135,10 +138,6 @@ exec_addi:
 	ret
 
 exec_andi:
-	; Load the dst and src addresses into R0 and R1, respectively.
-	lcall	set_dst_to_rd_iram_addr
-	lcall	set_src_to_rs1_iram_addr
-
 	; For each byte in the source and destination registers, AND the
 	; source byte with the corresponding immediate byte and store
 	; the result in the corresponding destination byte.
