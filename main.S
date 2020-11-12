@@ -27,8 +27,8 @@ busy_loop:
 decode_opcode:
 	push	a
 	mov	a, 0x20
-	cjne	a, #0x37, decode_0  ; LIU
-	lcall	exec_liu
+	cjne	a, #0x37, decode_0  ; LUI
+	lcall	exec_lui
 	sjmp	decode_done
 decode_0:
 	cjne	a, #0x13, decode_7  ; OP-IMM
@@ -118,31 +118,27 @@ exec_andi:
 
 ; IN: 0x20, r3:r2:r1:r0
 ; Clobbers: a, c, r1:r0
-exec_liu:
+exec_lui:
 	; Extract rd and store it in A.
 	lcall	extract_rd
 
 	; Get the IRAM offset of the RV register.
 	lcall	get_rv_reg_offset
 
-	; Increment the pointer to point to the 2nd byte.
-	inc	a
-
 	; Move the pointer into r0 so we can access the memory,
 	mov	r0, a
 
-	; ANL the RV reg byte with 0x0F.
-	mov	a, #0x0F
-	anl	a, @r0
+	; Set the lowest byte to zero.
+	mov	@r0, #0
+
+	; Increment the pointer to point to the 2nd byte.
+	inc	r0
 
 	; ANL the R1 byte with 0xF0.
-	xch	a, r1
+	mov	a, r1
 	anl	a, #0xF0
 
-	; ORL the two bytes together.
-	orl	a, r1
-
-	; Store the result back in r0.
+	; Store the result in r0.
 	mov	@r0, a
 
 	; Increment the pointer to point to the 3rd byte.
