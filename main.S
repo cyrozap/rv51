@@ -8,7 +8,8 @@
 ; - Instruction execution functions are each responsible for extracting
 ;   their parameters from their instructions.
 ; - Only the "fetch_instruction" function can modify instruction_[0-3].
-; - Only the "set_dst_to_rd_iram_addr" function can modify R0.
+; - Only the "set_dst_to_rd_iram_addr" and "init" functions can modify
+;   R0.
 ; - Only the "set_src_to_rs1_iram_addr" and "set_src_to_rs2_iram_addr"
 ;   functions can modify R1.
 ; - Only the "rv_calc_pc" function can modify rv_pc_[0-1].
@@ -43,6 +44,7 @@ rs2_dat2	= 0x3A
 rs2_dat3	= 0x3B
 rv_pc_0	= 0x3C
 rv_pc_1	= 0x3D
+rv_x0	= 0x80
 
 	.area	XSEG	(XDATA)
 	.area	PSEG	(PAG,XDATA)
@@ -57,6 +59,18 @@ init:
 	mov	sp, #0x40
 	; Use dptr as the RV's PC, offset by #rv_code.
 	mov	dptr, #(rv_code)
+	; Zero out the x0 register. It's best to hand reads from it as a
+	; special case, since that can speed things up quite a bit, but
+	; to simplify the code and expedite development, set it to zero
+	; so reading from it will return the correct value.
+	mov	R0, #rv_x0
+	mov	@R0, #0
+	inc	R0
+	mov	@R0, #0
+	inc	R0
+	mov	@R0, #0
+	inc	R0
+	mov	@R0, #0
 emu_loop:
 	lcall	fetch_instruction
 	lcall	decode_opcode
