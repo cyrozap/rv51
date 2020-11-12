@@ -344,10 +344,10 @@ extract_rs1:
 	ar2	= 0x02
 	mov	R2, instruction_1
 
-	; ANL R1 with 0x80 to get the bottom bit of rs1.
+	; ANL R2 with 0x80 to get the bottom bit of rs1.
 	anl	ar2, #0x80
 
-	; ANL R2 with 0x0F to get the top four bits of rs1.
+	; ANL instruction_2 with 0x0F to get the top four bits of rs1.
 	mov	a, instruction_2
 	anl	a, #0x0F
 
