@@ -90,12 +90,48 @@ exec_op_imm_rd_not_zero:
 
 	; Compare funct3.
 	mov	a, funct3
+	cjne	a, #0, exec_op_imm_0  ; ADDI
+	lcall	exec_addi
+	sjmp	exec_op_imm_done
+exec_op_imm_0:
 	cjne	a, #7, exec_op_imm_7  ; ANDI
 	lcall	exec_andi
 	sjmp	exec_op_imm_done
 exec_op_imm_7:
 	sjmp	.
 exec_op_imm_done:
+	ret
+
+exec_addi:
+	; Load the dst and src addresses into R0 and R1, respectively.
+	lcall	set_dst_to_rd_iram_addr
+	lcall	set_src_to_rs1_iram_addr
+
+	; For each byte in the source and destination registers, ADD the
+	; source byte with the corresponding immediate byte and store
+	; the result in the corresponding destination byte.
+	mov	a, @R1
+	add	a, immediate_0
+	mov	@R0, a
+	inc	R1
+	inc	R0
+
+	mov	a, @R1
+	addc	a, immediate_1
+	mov	@R0, a
+	inc	R1
+	inc	R0
+
+	mov	a, @R1
+	addc	a, immediate_2
+	mov	@R0, a
+	inc	R1
+	inc	R0
+
+	mov	a, @R1
+	addc	a, immediate_3
+	mov	@R0, a
+
 	ret
 
 exec_andi:
