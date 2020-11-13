@@ -97,6 +97,13 @@ decode_1:
 	lcall   exec_jal
 	sjmp    decode_done
 decode_2:
+	cjne    a, #0x67, decode_3  ; JALR
+	lcall	extract_funct3
+	mov	a, funct3
+	cjne	a, #0, decode_3
+	lcall   exec_jalr
+	sjmp    decode_done
+decode_3:
 	cjne	a, #0x23, decode_6  ; STORE
 	lcall	exec_store
 	sjmp	decode_done
@@ -107,6 +114,49 @@ decode_6:
 decode_7:
 	sjmp	.
 decode_done:
+	ret
+
+exec_jalr:
+	lcall	extract_rd
+	lcall	extract_rs1
+	lcall	extract_imm_11_0
+
+	; Skip writing the link register when rd is zero.
+	mov	a, rd
+	jz	exec_jalr_rd_not_zero
+
+	; Write the next RV PC into rd.
+	lcall	rv_calc_pc
+	lcall	set_dst_to_rd_iram_addr
+	mov	@R0, rv_pc_0
+	inc	R0
+	mov	@R0, rv_pc_1
+	inc	R0
+	mov	@R0, #(rv_rom_base >> 16)
+	inc	R0
+	mov	@R0, #(rv_rom_base >> 24)
+
+exec_jalr_rd_not_zero:
+	; Load rs1 into R1.
+	lcall	set_src_to_rs1_iram_addr
+
+	; Read the base address byte by byte, adding the immediate to
+	; it, clearing the lowest bit, and storing the results in dptr.
+	mov	a, @R1
+	add	a, immediate_0
+	anl	a, #0xFE
+	mov	dpl, a
+	inc	R1
+
+	mov	a, @R1
+	addc	a, immediate_1
+	mov	dph, a
+
+	; We can't jump anywhere but CODE memory, so just ignore the upper
+	; two bytes of rs1.
+
+	; TODO: Use immediate_2 to support paged CODE memory.
+
 	ret
 
 exec_jal:
