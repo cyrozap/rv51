@@ -104,6 +104,10 @@ decode_2:
 	lcall   exec_jalr
 	sjmp    decode_done
 decode_3:
+	cjne    a, #0x63, decode_4  ; BRANCH
+	lcall   exec_branch
+	sjmp    decode_done
+decode_4:
 	cjne	a, #0x23, decode_6  ; STORE
 	lcall	exec_store
 	sjmp	decode_done
@@ -115,6 +119,151 @@ decode_7:
 	sjmp	.
 decode_done:
 	ret
+
+exec_branch:
+	; Skip extracting funct3--instead use the bits directly from the
+	; instruction.
+	inst_funct3_bit_0__set_if_negated	= (((instruction_0 - 0x20) * 8) + 12)
+	inst_funct3_bit_1__set_if_unsigned_cleared_if_signed	= (((instruction_0 - 0x20) * 8) + 13)
+	inst_funct3_bit_2__set_if_lt_ge_cleared_if_eq	= (((instruction_0 - 0x20) * 8) + 14)
+
+	; Extract rs1 and rs2.
+	lcall	extract_rs1
+	lcall	extract_rs2
+
+	; Load rs1 into R1.
+	lcall	set_src_to_rs1_iram_addr
+
+	; Read rs1 into immediate_[0-3].
+	mov	immediate_0, @R1
+	inc	R1
+	mov	immediate_1, @R1
+	inc	R1
+	mov	immediate_2, @R1
+	inc	R1
+	mov	immediate_3, @R1
+
+	; Load rs2 into R1.
+	lcall	set_src_to_rs2_iram_addr
+
+	; Read rs2 into rd, funct3, rs1, rs2.
+	; DO NOT USE THESE AGAIN IN THIS FUNCTION EXCEPT FOR COMPARISONS!
+	mov	rd, @R1
+	inc	R1
+	mov	funct3, @R1
+	inc	R1
+	mov	rs1, @R1
+	inc	R1
+	mov	rs2, @R1
+
+	; Determine if we need to do an equality comparison or not.
+	jb	inst_funct3_bit_2__set_if_lt_ge_cleared_if_eq, branch_check_lt_ge
+
+	; We're checking EQ/NE, not LT/GE.
+	mov	a, immediate_0
+	xrl	a, rd
+	jnz	branch_eq_ne_result_not_equal
+	mov	a, immediate_1
+	xrl	a, funct3
+	jnz	branch_eq_ne_result_not_equal
+	mov	a, immediate_2
+	xrl	a, rs1
+	jnz	branch_eq_ne_result_not_equal
+	mov	a, immediate_3
+	xrl	a, rs2
+	jnz	branch_eq_ne_result_not_equal
+
+	; rs1 == rs2. If the negated bit is cleared, that means we take the branch on EQ.
+	jnb	inst_funct3_bit_0__set_if_negated, branch_take
+
+	; Don't take the branch when rs1 == rs2 and the bit is set.
+	ret
+
+branch_eq_ne_result_not_equal:
+	; rs1 != rs2. If the negated bit is set, that means we take the branch on NE.
+	jb	inst_funct3_bit_0__set_if_negated, branch_take
+
+	; Don't take the branch when rs1 != rs2 and the bit is cleared.
+	ret
+
+branch_check_lt_ge:
+	; We're checking LT/GE, not EQ/NE.
+
+	; Determine if we need to do a signed comparison or not.
+	jb	inst_funct3_bit_1__set_if_unsigned_cleared_if_signed, branch_check_lt_ge_unsigned
+
+	; We're doing a signed comparison.
+
+	; if rs1 is negative (sign bit set) and rs2 is positive (sign bit cleared), rs1 < rs2.
+
+	; Jump if rs1 is negative.
+	jb	(((immediate_0 - 0x20) * 8) + 31), branch_rs1_is_negative_rs2_is_unknown
+
+	; rs1 is positive.
+
+	; if rs1 is positive (sign bit cleared) and rs2 is negative (sign bit set), rs1 > rs2.
+
+	; Jump if rs2 is negative.
+	jb	(((rd - 0x20) * 8) + 31), branch_lt_ge_result_greater_than_or_equal_to
+
+	; rs2 is positive.
+
+	; if rs1 is positive (sign bit cleared) and rs2 is positive
+	; (sign bit cleared), we just do an unsigned comparison.
+	sjmp	branch_check_lt_ge_unsigned
+
+branch_rs1_is_negative_rs2_is_unknown:
+	; rs1 is negative.
+
+	; Jump if rs2 is negative.
+	jb	(((rd - 0x20) * 8) + 31), branch_rs1_and_rs2_are_both_negative
+
+	; rs2 is positive.
+
+	; rs1 < rs2.
+	sjmp	branch_lt_ge_result_less_than
+
+branch_rs1_and_rs2_are_both_negative:
+	; rs1 is negative and rs2 is negative. Since they're the same sign, we
+	; can just treat them like they're unsigned and do an unsigned
+	; comparison.
+	; Fall through here.
+
+branch_check_lt_ge_unsigned:
+	; We're doing an unsigned comparison.
+
+	; Do comparison by rs1 - rs2.
+	clr	c
+	mov	a, immediate_0
+	subb	a, rd
+	mov	a, immediate_1
+	subb	a, funct3
+	mov	a, immediate_2
+	subb	a, rs1
+	mov	a, immediate_3
+	subb	a, rs2
+
+	; if rs1 < rs2, the carry bit will be set.
+	jc	branch_lt_ge_result_less_than
+
+branch_lt_ge_result_greater_than_or_equal_to:
+	; rs1 >= rs2. If the negated bit is set, that means we take the branch on GE.
+	jb	inst_funct3_bit_0__set_if_negated, branch_take
+
+	; Don't take the branch when rs1 >= rs2 and the bit is cleared.
+	ret
+
+branch_lt_ge_result_less_than:
+	; rs1 < rs2. If the negated bit is cleared, that means we take the branch on LT.
+	jnb	inst_funct3_bit_0__set_if_negated, branch_take
+
+	; Don't take the branch when rs1 < rs2 and the bit is set.
+	ret
+
+branch_take:
+	; Load the immediate and take the branch.
+	lcall	extract_imm_12_10_5_4_1_11
+	ljmp	jump_to_current_PC_plus_immediate
 
 exec_jalr:
 	lcall	extract_rd
@@ -179,6 +328,7 @@ exec_jal:
 	mov	@R0, #(rv_rom_base >> 24)
 
 exec_jal_rd_zero:
+jump_to_current_PC_plus_immediate:
 	; Subtract 4 from the dptr, since it's currently pointing to the
 	; next instruction and we need it to be pointing to the current
 	; instruction
@@ -478,6 +628,40 @@ rv_calc_pc:
 	subb	a, #(rv_code >> 8)
 	mov	rv_pc_1, a
 	ret
+
+extract_imm_12_10_5_4_1_11:
+	; Extract imm[4:1] and store it in immediate_0.
+	mov	a, instruction_1
+	anl	a, #0x0F
+	rl	a
+	mov	immediate_0, a
+
+	; Extract imm[11] and OR it with immediate_1.
+	mov	immediate_1, #0
+	jnb	(((instruction_0 - 0x20) * 8) + 7), extract_imm_12_10_5_4_1_11_bit_11_zero
+	setb	(((immediate_1 - 0x20) * 8) + 3)
+
+extract_imm_12_10_5_4_1_11_bit_11_zero:
+	; Extract imm[10:5] and store it as imm[7:5]|00|imm[10:8] in R2.
+	mov	a, instruction_3
+	anl	a, #0x7E
+	swap	a
+	mov	R2, a
+
+	; Extract imm[10:8] and OR it with immediate_1.
+	anl	a, #0x07
+	orl	immediate_1, a
+
+	; Extract imm[7:5] and OR it with immediate_0.
+	mov	a, R2
+	anl	a, #0xE0
+	orl	immediate_0, a
+
+	; Extend the sign of the 13-bit immediate. I know the function says
+	; "twelve_bit_immediate", but since the sign is always in instruction
+	; bit 31, and that's where bit 12 is, and bit 12 will be overwritten by
+	; this function, it'll work for this 13-bit immediate, too.
+	ljmp	twelve_bit_immediate_sign_extension
 
 extract_imm_20_10_1_11_19_12:
 	; Extract imm[15:12] and store it in immediate_1.
