@@ -93,6 +93,10 @@ decode_0:
 	lcall   exec_auipc
 	sjmp    decode_done
 decode_1:
+	cjne    a, #0x6F, decode_2  ; JAL
+	lcall   exec_jal
+	sjmp    decode_done
+decode_2:
 	cjne	a, #0x23, decode_6  ; STORE
 	lcall	exec_store
 	sjmp	decode_done
@@ -103,6 +107,46 @@ decode_6:
 decode_7:
 	sjmp	.
 decode_done:
+	ret
+
+exec_jal:
+	lcall	extract_rd
+	lcall	extract_imm_20_10_1_11_19_12
+
+	; Skip writing the link register when rd is zero.
+	mov	a, rd
+	jz	exec_jal_rd_not_zero
+
+	; Write the next RV PC into rd.
+	lcall	rv_calc_pc
+	lcall	set_dst_to_rd_iram_addr
+	mov	@R0, rv_pc_0
+	inc	R0
+	mov	@R0, rv_pc_1
+	inc	R0
+	mov	@R0, #(rv_rom_base >> 16)
+	inc	R0
+	mov	@R0, #(rv_rom_base >> 24)
+
+exec_jal_rd_not_zero:
+	; Subtract 4 from the dptr, since it's currently pointing to the
+	; next instruction and we need it to be pointing to the current
+	; instruction
+	mov	a, dpl
+	add	a, #-4
+	mov	dpl, a
+	mov	a, dph
+	addc	a, #-1
+	mov	dph, a
+
+	; Add the immediate to dptr, the "real" PC.
+	mov	a, dpl
+	add	a, immediate_0
+	mov	dpl, a
+	mov	a, dph
+	addc	a, immediate_1
+	mov	dph, a
+
 	ret
 
 exec_store:
@@ -383,6 +427,60 @@ rv_calc_pc:
 	mov	a, dph
 	subb	a, #(rv_code >> 8)
 	mov	rv_pc_1, a
+	ret
+
+extract_imm_20_10_1_11_19_12:
+	; Extract imm[15:12] and store it in immediate_1.
+	mov	a, instruction_1
+	anl	a, #0xF0
+	mov	immediate_1, a
+
+	; Extract imm[19:16] and store it in immediate_2.
+	mov	a, instruction_2
+	anl	a, #0x0F
+	mov	immediate_2, a
+
+	; Extract imm[3:1] and store it in immediate_0.
+	mov	a, instruction_2
+	swap	a
+	anl	a, #0x0E
+	mov	immediate_0, a
+
+	; Extract imm[11] and OR it with immediate_1.
+	mov	a, instruction_2
+	swap	a
+	rr	a
+	anl	a, #0x80
+	swap	a
+	orl	immediate_1, a
+
+	; Extract imm[10:4] and store it as imm[7:4]|0|imm[10:8] in R2.
+	mov	a, instruction_3
+	anl	a, #0x7F
+	swap	a
+	mov	R2, a
+
+	; Extract imm[10:8] and OR it with immediate_1.
+	anl	a, #0x07
+	orl	immediate_1, a
+
+	; Extract imm[7:4] and OR it with immediate_0.
+	mov	a, R2
+	anl	a, #0xF0
+	orl	immediate_0, a
+
+	; Extend the sign.
+	jb	(((instruction_3 - 0x20) * 8) + 7), extract_imm_20_10_1_11_19_12_negative
+
+	; Positive
+	anl	immediate_2, #0x0F
+	mov	immediate_3, #0x00
+	ret
+
+extract_imm_20_10_1_11_19_12_negative:
+	; Negative
+	orl	immediate_2, #0xF0
+	mov	immediate_3, #0xFF
 	ret
 
 extract_imm_11_5_4_0:
