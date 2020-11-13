@@ -93,12 +93,97 @@ decode_0:
 	lcall   exec_auipc
 	sjmp    decode_done
 decode_1:
+	cjne	a, #0x23, decode_6  ; STORE
+	lcall	exec_store
+	sjmp	decode_done
+decode_6:
 	cjne	a, #0x13, decode_7  ; OP-IMM
 	lcall	exec_op_imm
 	sjmp	decode_done
 decode_7:
 	sjmp	.
 decode_done:
+	ret
+
+exec_store:
+	lcall	extract_funct3
+	lcall	extract_rs1
+	lcall	extract_rs2
+	lcall	extract_imm_11_5_4_0
+
+	; Load rs1 into R1.
+	lcall	set_src_to_rs1_iram_addr
+
+	; Read the base address byte by byte, adding the immediate to it
+	; and storing the results in rs1_dat[0-3].
+	mov	a, @R1
+	add	a, immediate_0
+	mov	rs1_dat0, a
+	inc	R1
+
+	mov	a, @R1
+	addc	a, immediate_1
+	mov	rs1_dat1, a
+	inc	R1
+
+	; TODO: Use the upper two bytes to support paged XRAM and
+	; multiple address spaces (e.g., IRAM, SFRs).
+	;mov	a, @R1
+	;addc	a, immediate_2
+	;mov	rs1_dat2, a
+	;inc	R1
+
+	;mov	a, @R1
+	;addc	a, immediate_3
+	;mov	rs1_dat3, a
+
+	; Now that we have the final virtual destination address, we
+	; need to convert that into a real dptr. Push the current dptr
+	; to the stack, then set the new dptr from the lowest two bytes
+	; of the destination address.
+	push	dph
+	push	dpl
+	mov	dpl, rs1_dat0
+	mov	dph, rs1_dat1
+
+	; The data to STORE comes from rs2, so load rs2 into R1.
+	lcall	set_src_to_rs2_iram_addr
+
+	; We're always writing at least one byte.
+	mov	a, @R1
+	movx	@dptr, a
+
+	; Jump to the end if we're done. Otherwise, continue.
+	mov	a, funct3
+	jz	exec_store_done
+	dec	funct3
+
+	; Write the next byte of the 16-bit word.
+	inc	R1
+	mov     a, @R1
+	inc	dptr
+	movx    @dptr, a
+
+	; Jump to the end if we're done. Otherwise, continue.
+	mov	a, funct3
+	jz	exec_store_done
+
+	; Write the next two bytes of the 32-bit word.
+	inc	R1
+	mov     a, @R1
+	inc	dptr
+	movx    @dptr, a
+
+	inc	R1
+	mov     a, @R1
+	inc	dptr
+	movx    @dptr, a
+
+exec_store_done:
+	; Restore dptr.
+	pop	dpl
+	pop	dph
+
 	ret
 
 exec_op_imm:
@@ -300,6 +385,43 @@ rv_calc_pc:
 	mov	rv_pc_1, a
 	ret
 
+extract_imm_11_5_4_0:
+	ar2 = 2
+
+	; Copy the lowest instruction byte to working register R2.
+	mov	R2, instruction_0
+
+	; Rotate instruction_1:R2 left by 1.
+	MOV	A, instruction_1
+	MOV	C, ACC.7
+	XCH	A, R2
+	RLC	A
+	XCH	A, R2
+	RLC	A
+
+	; Extract imm[4:0] from R3.
+	anl	a, #0x1F
+
+	; Copy the result to immediate_0.
+	mov	immediate_0, a
+
+	; Copy the highest instruction byte to A.
+	mov	a, instruction_3
+
+	; Swap the nybbles to make imm[7:5]|X|imm[11:8].
+	swap	a
+
+	; Store imm[7:5]|X|imm[11:8] in immediate_1 (the upper 4 bits will be
+	; overwritten by the sign extension process).
+	mov	immediate_1, a
+
+	; Extract imm[7:5] and OR it with immediate_0.
+	anl	a, #0xE0
+	orl	immediate_0, a
+
+	; Extend the sign of the 12-bit immediate.
+	ljmp	twelve_bit_immediate_sign_extension
+
 extract_imm_11_0:
 	; Copy the two highest instruction bytes to R3:R2.
 	mov	R2, instruction_2
@@ -321,6 +443,7 @@ extract_imm_11_0:
 	mov	immediate_0, R2
 	mov	immediate_1, a
 
+twelve_bit_immediate_sign_extension:
 	; Extend the sign.
 	jb	(((instruction_3 - 0x20) * 8) + 7), extract_imm_11_0_negative
 
@@ -351,6 +474,26 @@ extract_imm_31_12:
 	; Bytes instruction_3:instruction_2 get stored into the top two bytes of the immediate.
 	mov	immediate_2, instruction_2
 	mov	immediate_3, instruction_3
+
+	ret
+
+extract_rs2:
+	ar2	= 0x02
+
+	; ANL instruction_2 with 0xF0 to get the bottom four bits of rs2.
+	mov	a, instruction_2
+	anl	a, #0xF0
+
+	; ANL R2 with 0x01 to get the top bit of rs2.
+	mov	R2, instruction_3
+	anl	ar2, #0x01
+
+	; ORL the two registers, then swap nybbles to get rs2.
+	orl	a, R2
+	swap	a
+
+	; Store the result in rs2.
+	mov	rs2, a
 
 	ret
 
