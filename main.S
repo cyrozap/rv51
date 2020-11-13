@@ -123,7 +123,7 @@ exec_jalr:
 
 	; Skip writing the link register when rd is zero.
 	mov	a, rd
-	jz	exec_jalr_rd_not_zero
+	jz	exec_jalr_rd_zero
 
 	; Write the next RV PC into rd.
 	lcall	rv_calc_pc
@@ -136,7 +136,7 @@ exec_jalr:
 	inc	R0
 	mov	@R0, #(rv_rom_base >> 24)
 
-exec_jalr_rd_not_zero:
+exec_jalr_rd_zero:
 	; Load rs1 into R1.
 	lcall	set_src_to_rs1_iram_addr
 
@@ -165,7 +165,7 @@ exec_jal:
 
 	; Skip writing the link register when rd is zero.
 	mov	a, rd
-	jz	exec_jal_rd_not_zero
+	jz	exec_jal_rd_zero
 
 	; Write the next RV PC into rd.
 	lcall	rv_calc_pc
@@ -178,7 +178,7 @@ exec_jal:
 	inc	R0
 	mov	@R0, #(rv_rom_base >> 24)
 
-exec_jal_rd_not_zero:
+exec_jal_rd_zero:
 	; Subtract 4 from the dptr, since it's currently pointing to the
 	; next instruction and we need it to be pointing to the current
 	; instruction
