@@ -4,7 +4,7 @@ CC := sdcc
 CFLAGS := -mmcs51 --std-sdcc11 --model-small --stack-auto
 OBJCOPY := sdobjcopy
 
-all: emu.bin
+all: rv51.bin
 
 %.rel: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
@@ -12,7 +12,7 @@ all: emu.bin
 %.rel: %.S
 	$(AS) $(ASFLAGS) $<
 
-emu.ihx: main.rel
+rv51.ihx: main.rel
 	$(CC) $(CFLAGS) -o $@ $^
 
 %.bin: %.ihx
