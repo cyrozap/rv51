@@ -643,6 +643,10 @@ exec_op_imm_2:
 	lcall	exec_slti_sltiu
 	sjmp	exec_op_imm_done
 exec_op_imm_3:
+	cjne	a, #4, exec_op_imm_4  ; XORI
+	lcall	exec_xori
+	sjmp	exec_op_imm_done
+exec_op_imm_4:
 	cjne	a, #7, exec_op_imm_7  ; ANDI
 	lcall	exec_andi
 	sjmp	exec_op_imm_done
@@ -771,6 +775,34 @@ slti_sltiu_final:
 	mov	@R0, #0
 	inc	R0
 	mov	@R0, #0
+
+	ret
+
+exec_xori:
+	; For each byte in the source and destination registers, XOR the
+	; source byte with the corresponding immediate byte and store
+	; the result in the corresponding destination byte.
+	mov	a, @R1
+	xrl	a, immediate_0
+	mov	@R0, a
+	inc	R1
+	inc	R0
+
+	mov	a, @R1
+	xrl	a, immediate_1
+	mov	@R0, a
+	inc	R1
+	inc	R0
+
+	mov	a, @R1
+	xrl	a, immediate_2
+	mov	@R0, a
+	inc	R1
+	inc	R0
+
+	mov	a, @R1
+	xrl	a, immediate_3
+	mov	@R0, a
 
 	ret
 
