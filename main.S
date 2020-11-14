@@ -647,16 +647,16 @@ exec_store:
 	mov	rs1_dat1, a
 	inc	R1
 
-	; TODO: Use the upper two bytes to support paged XRAM and
-	; multiple address spaces (e.g., IRAM, SFRs).
-	;mov	a, @R1
-	;addc	a, immediate_2
-	;mov	rs1_dat2, a
-	;inc	R1
+	; The upper bytes are used to access different address spaces.
+	; e.g., XDATA, SFR, hypercall registers, etc.
+	mov	a, @R1
+	addc	a, immediate_2
+	mov	rs1_dat2, a
+	inc	R1
 
-	;mov	a, @R1
-	;addc	a, immediate_3
-	;mov	rs1_dat3, a
+	mov	a, @R1
+	addc	a, immediate_3
+	mov	rs1_dat3, a
 
 	; Now that we have the final virtual destination address, we
 	; need to convert that into a real dptr. Push the current dptr
@@ -670,6 +670,18 @@ exec_store:
 	; The data to STORE comes from rs2, so load rs2 into R1.
 	lcall	set_src_to_rs2_iram_addr
 
+	; Check what address space we're reading.
+	clr	c
+	mov	a, rs1_dat3
+	subb	a, #((rv_rom_base - rv_ram_base) >> 24)
+	jc	exec_store_lt_80_xdata
+	subb	a, #((rv_sfr_base - rv_rom_base) >> 24)
+	jc	exec_store_lt_C0_code
+	subb	a, #((rv_hyp_base - rv_sfr_base) >> 24)
+	jc	exec_store_lt_E0_sfr
+	sjmp	exec_store_ge_E0_hyp
+
+exec_store_lt_80_xdata:
 	; We're always writing at least one byte.
 	mov	a, @R1
 	movx	@dptr, a
@@ -699,6 +711,21 @@ exec_store:
 	mov     a, @R1
 	inc	dptr
 	movx    @dptr, a
+
+	; We're definitely done writing now, so jump to the end.
+	sjmp	exec_store_done
+
+exec_store_lt_C0_code:
+	; This should never happen. If execution gets here, there's
+	; either a bug in the emulator or a bug in the RV code. Which
+	; means it could be literally anywhere. Good luck.
+	sjmp	.
+
+exec_store_lt_E0_sfr:
+exec_store_ge_E0_hyp:
+	; Unimplemented--noop for now.
+
+	; Fall through here.
 
 exec_store_done:
 	; Restore dptr.
