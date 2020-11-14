@@ -776,6 +776,14 @@ exec_op_imm_3:
 	lcall	exec_xori
 	sjmp	exec_op_imm_done
 exec_op_imm_4:
+	cjne	a, #5, exec_op_imm_5  ; SRLI/SRAI
+	lcall	extract_funct7
+	mov	a, funct7
+	anl	a, #0xDF
+	cjne	a, #0, exec_op_imm_5
+	lcall	exec_srli_srai
+	sjmp	exec_op_imm_done
+exec_op_imm_5:
 	cjne	a, #6, exec_op_imm_6  ; ORI
 	lcall	exec_ori
 	sjmp	exec_op_imm_done
@@ -980,6 +988,80 @@ exec_xori:
 	mov	a, @R1
 	xrl	a, immediate_3
 	mov	@R0, a
+
+	ret
+
+exec_srli_srai:
+	; Return early if the shift is zero.
+	mov	a, immediate_0
+	anl	a, #0x1F
+	jnz	exec_srli_srai_shift_not_zero
+	ret
+
+exec_srli_srai_shift_not_zero:
+	; Read rs1 into its IRAM variable because we're going to be
+	; making a lot of modifications to it before storing the result
+	; in the destination register.
+	mov	rs1_dat0, @R1
+	inc	R1
+	mov	rs1_dat1, @R1
+	inc	R1
+	mov	rs1_dat2, @R1
+	inc	R1
+	mov	rs1_dat3, @R1
+
+	jb	(((funct7 - 0x20) * 8) + 5), exec_srli_srai_arith
+
+exec_srli_srai_loop:
+	clr	c
+	mov	a, rs1_dat3
+	rrc	a
+	mov	rs1_dat3, a
+	mov	a, rs1_dat2
+	rrc	a
+	mov	rs1_dat2, a
+	mov	a, rs1_dat1
+	rrc	a
+	mov	rs1_dat1, a
+	mov	a, rs1_dat0
+	rrc	a
+	mov	rs1_dat0, a
+	djnz	immediate_0, exec_srli_srai_loop
+	sjmp	exec_srli_srai_done
+
+exec_srli_srai_arith:
+	; Do the regular right shift if the sign bit is clear.
+	mov	a, rs1_dat3
+	jnb	ACC.7, exec_srli_srai_loop
+
+	; Fall through for the shift with the sign set.
+
+exec_srli_srai_loop_arith:
+	setb	c
+	mov	a, rs1_dat3
+	rrc	a
+	mov	rs1_dat3, a
+	mov	a, rs1_dat2
+	rrc	a
+	mov	rs1_dat2, a
+	mov	a, rs1_dat1
+	rrc	a
+	mov	rs1_dat1, a
+	mov	a, rs1_dat0
+	rrc	a
+	mov	rs1_dat0, a
+	djnz	immediate_0, exec_srli_srai_loop_arith
+
+	; Fall through when done.
+
+exec_srli_srai_done:
+	mov	@R0, rs1_dat0
+	inc	R0
+	mov	@R0, rs1_dat1
+	inc	R0
+	mov	@R0, rs1_dat2
+	inc	R0
+	mov	@R0, rs1_dat3
 
 	ret
 

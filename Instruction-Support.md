@@ -28,8 +28,8 @@
 - [x] ORI
 - [x] ANDI
 - [x] SLLI
-- [ ] SRLI
-- [ ] SRAI
+- [x] SRLI
+- [x] SRAI
 - [x] ADD
 - [ ] SUB
 - [ ] SLL
