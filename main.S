@@ -757,6 +757,13 @@ exec_op_imm_rd_not_zero:
 	lcall	exec_addi
 	sjmp	exec_op_imm_done
 exec_op_imm_0:
+	cjne	a, #1, exec_op_imm_1  ; SLLI
+	lcall	extract_funct7
+	mov	a, funct7
+	cjne	a, #0, exec_op_imm_1
+	lcall	exec_slli
+	sjmp	exec_op_imm_done
+exec_op_imm_1:
 	cjne	a, #2, exec_op_imm_2  ; SLTI
 	lcall	exec_slti_sltiu
 	sjmp	exec_op_imm_done
@@ -806,6 +813,50 @@ exec_addi:
 	mov	a, @R1
 	addc	a, immediate_3
 	mov	@R0, a
+
+	ret
+
+exec_slli:
+	; Return early if the shift is zero.
+	mov	a, immediate_0
+	jnz	exec_slli_shift_not_zero
+	ret
+
+exec_slli_shift_not_zero:
+	; Read rs1 into its IRAM variable because we're going to be
+	; making a lot of modifications to it before storing the result
+	; in the destination register.
+	mov	rs1_dat0, @R1
+	inc	R1
+	mov	rs1_dat1, @R1
+	inc	R1
+	mov	rs1_dat2, @R1
+	inc	R1
+	mov	rs1_dat3, @R1
+
+exec_slli_loop:
+	clr	c
+	mov	a, rs1_dat0
+	rlc	a
+	mov	rs1_dat0, a
+	mov	a, rs1_dat1
+	rlc	a
+	mov	rs1_dat1, a
+	mov	a, rs1_dat2
+	rlc	a
+	mov	rs1_dat2, a
+	mov	a, rs1_dat3
+	rlc	a
+	mov	rs1_dat3, a
+	djnz	immediate_0, exec_slli_loop
+
+	mov	@R0, rs1_dat0
+	inc	R0
+	mov	@R0, rs1_dat1
+	inc	R0
+	mov	@R0, rs1_dat2
+	inc	R0
+	mov	@R0, rs1_dat3
 
 	ret
 

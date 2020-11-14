@@ -27,7 +27,7 @@
 - [x] XORI
 - [x] ORI
 - [x] ANDI
-- [ ] SLLI
+- [x] SLLI
 - [ ] SRLI
 - [ ] SRAI
 - [x] ADD
