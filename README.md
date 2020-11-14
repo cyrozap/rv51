@@ -86,9 +86,9 @@ internal data memory, since the emulator uses the upper 128 bytes as the
 register file.
 
 This emulator is only meant to support the RV32I instruction set, and maybe
-the "M" extension if it's not too difficult to implement. 64-bit and floating
-point support will never be added, since both would require too much memory
-and the hardware doesn't have floating point support.
+the "M" and "C" extensions if they're not too difficult to implement. 64-bit
+and floating point support will never be added, since both would require too
+much memory and the hardware doesn't have floating point support.
 
 Currently, only 20 instructions of the 40 in the RV32I Base Instruction Set
 have been implemented. You can see instruction support status in [Instruction

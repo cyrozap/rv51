@@ -55,3 +55,34 @@
 - [ ] DIVU
 - [ ] REM
 - [ ] REMU
+
+
+## RV32C Instruction Set
+
+- [ ] C.LWSP
+- [ ] C.SWSP
+- [ ] C.LW
+- [ ] C.SW
+- [ ] C.J
+- [ ] C.JAL
+- [ ] C.JR
+- [ ] C.JALR
+- [ ] C.BEQZ
+- [ ] C.BNEZ
+- [ ] C.LI
+- [ ] C.LUI
+- [ ] C.ADDI
+- [ ] C.ADDI16SP
+- [ ] C.ADDI4SPN
+- [ ] C.SLLI
+- [ ] C.SRLI
+- [ ] C.SRAI
+- [ ] C.ANDI
+- [ ] C.MV
+- [ ] C.ADD
+- [ ] C.AND
+- [ ] C.OR
+- [ ] C.XOR
+- [ ] C.SUB
+- [ ] C.NOP
+- [ ] C.EBREAK
