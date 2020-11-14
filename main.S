@@ -1034,7 +1034,7 @@ exec_auipc:
 
 	; Return early if we're writing the zero register.
 	mov	a, rd
-	cjne	a, #0, exec_lui_rd_not_zero
+	cjne	a, #0, exec_auipc_rd_not_zero
 	ret
 
 exec_auipc_rd_not_zero:
