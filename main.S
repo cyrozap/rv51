@@ -78,18 +78,17 @@ init:
 	mov	sp, #0x40
 	; Use dptr as the RV's PC, offset by #rv_code.
 	mov	dptr, #(rv_code)
-	; Zero out the x0 register. It's best to hand reads from it as a
-	; special case, since that can speed things up quite a bit, but
-	; to simplify the code and expedite development, set it to zero
-	; so reading from it will return the correct value.
+	; Zero all RV registers. This is necessary for x0 since we don't
+	; currently treat reads from it as a special case. And while
+	; this isn't necessary for the other registers, doing this here
+	; means the RV code won't have to (slowly) zero registers when
+	; it starts, resulting in a slightly faster RV application
+	; startup time.
 	mov	R0, #rv_x0
+zero_rv_regs:
 	mov	@R0, #0
 	inc	R0
-	mov	@R0, #0
-	inc	R0
-	mov	@R0, #0
-	inc	R0
-	mov	@R0, #0
+	cjne	R0, #0, zero_rv_regs
 emu_loop:
 	lcall	fetch_instruction
 	lcall	decode_opcode
