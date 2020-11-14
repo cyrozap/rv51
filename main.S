@@ -647,6 +647,10 @@ exec_op_imm_3:
 	lcall	exec_xori
 	sjmp	exec_op_imm_done
 exec_op_imm_4:
+	cjne	a, #6, exec_op_imm_6  ; ORI
+	lcall	exec_ori
+	sjmp	exec_op_imm_done
+exec_op_imm_6:
 	cjne	a, #7, exec_op_imm_7  ; ANDI
 	lcall	exec_andi
 	sjmp	exec_op_imm_done
@@ -802,6 +806,34 @@ exec_xori:
 
 	mov	a, @R1
 	xrl	a, immediate_3
+	mov	@R0, a
+
+	ret
+
+exec_ori:
+	; For each byte in the source and destination registers, OR the
+	; source byte with the corresponding immediate byte and store
+	; the result in the corresponding destination byte.
+	mov	a, @R1
+	orl	a, immediate_0
+	mov	@R0, a
+	inc	R1
+	inc	R0
+
+	mov	a, @R1
+	orl	a, immediate_1
+	mov	@R0, a
+	inc	R1
+	inc	R0
+
+	mov	a, @R1
+	orl	a, immediate_2
+	mov	@R0, a
+	inc	R1
+	inc	R0
+
+	mov	a, @R1
+	orl	a, immediate_3
 	mov	@R0, a
 
 	ret

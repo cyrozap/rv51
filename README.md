@@ -90,7 +90,7 @@ the "M" and "C" extensions if they're not too difficult to implement. 64-bit
 and floating point support will never be added, since both would require too
 much memory and the hardware doesn't have floating point support.
 
-Currently, only 23 instructions of the 40 in the RV32I Base Instruction Set
+Currently, only 24 instructions of the 40 in the RV32I Base Instruction Set
 have been implemented. You can see instruction support status in [Instruction
 Support][isa-support].
 
