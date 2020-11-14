@@ -139,6 +139,10 @@ decode_6:
 	lcall	exec_op_imm
 	sjmp	decode_done
 decode_7:
+	cjne	a, #0x33, decode_8  ; OP
+	lcall	exec_op
+	sjmp	decode_done
+decode_8:
 	sjmp	.
 decode_done:
 	ret
@@ -866,6 +870,74 @@ exec_andi:
 
 	ret
 
+exec_op:
+	lcall	extract_rd
+
+	; Return early if we're writing the zero register.
+	mov	a, rd
+	cjne	a, #0, exec_op_rd_not_zero
+	ret
+
+exec_op_rd_not_zero:
+	lcall	extract_funct3
+	lcall	extract_rs1
+	lcall	extract_rs2
+	lcall	extract_funct7
+
+	; Load the dst and src addresses into R0 and R1, respectively.
+	lcall	set_dst_to_rd_iram_addr
+	lcall	set_src_to_rs1_iram_addr
+
+	; Load rs1 into rs1_dat[0-3].
+	mov	rs1_dat0, @R1
+	inc	R1
+	mov	rs1_dat1, @R1
+	inc	R1
+	mov	rs1_dat2, @R1
+	inc	R1
+	mov	rs1_dat3, @R1
+
+	; Load the second src address into R1.
+	lcall	set_src_to_rs2_iram_addr
+
+	; Compare funct3.
+	mov	a, funct3
+	cjne	a, #0, exec_op_0  ; ADD
+	lcall	exec_add
+	sjmp	exec_op_done
+exec_op_0:
+	sjmp	.
+exec_op_done:
+	ret
+
+exec_add:
+	; For each byte in the source and destination registers, ADD the
+	; first source byte with the corresponding second source byte
+	; and store the result in the corresponding destination byte.
+	mov	a, rs1_dat0
+	add	a, @R1
+	mov	@R0, a
+	inc	R1
+	inc	R0
+
+	mov	a, rs1_dat1
+	addc	a, @R1
+	mov	@R0, a
+	inc	R1
+	inc	R0
+
+	mov	a, rs1_dat2
+	addc	a, @R1
+	mov	@R0, a
+	inc	R1
+	inc	R0
+
+	mov	a, rs1_dat3
+	addc	a, @R1
+	mov	@R0, a
+
+	ret
+
 exec_auipc:
 	lcall	extract_rd
 
@@ -1156,6 +1228,13 @@ extract_imm_31_12:
 	mov	immediate_2, instruction_2
 	mov	immediate_3, instruction_3
 
+	ret
+
+extract_funct7:
+	mov	a, instruction_3
+	anl	a, #0xFE
+	rr	a
+	mov	funct7, a
 	ret
 
 extract_rs2:

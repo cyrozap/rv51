@@ -30,7 +30,7 @@
 - [ ] SLLI
 - [ ] SRLI
 - [ ] SRAI
-- [ ] ADD
+- [x] ADD
 - [ ] SUB
 - [ ] SLL
 - [ ] SLT
