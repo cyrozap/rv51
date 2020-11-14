@@ -22,8 +22,8 @@
 - [x] SH
 - [x] SW
 - [x] ADDI
-- [ ] SLTI
-- [ ] SLTIU
+- [x] SLTI
+- [x] SLTIU
 - [ ] XORI
 - [ ] ORI
 - [x] ANDI

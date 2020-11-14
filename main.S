@@ -635,6 +635,14 @@ exec_op_imm_rd_not_zero:
 	lcall	exec_addi
 	sjmp	exec_op_imm_done
 exec_op_imm_0:
+	cjne	a, #2, exec_op_imm_2  ; SLTI
+	lcall	exec_slti_sltiu
+	sjmp	exec_op_imm_done
+exec_op_imm_2:
+	cjne	a, #3, exec_op_imm_3  ; SLTIU
+	lcall	exec_slti_sltiu
+	sjmp	exec_op_imm_done
+exec_op_imm_3:
 	cjne	a, #7, exec_op_imm_7  ; ANDI
 	lcall	exec_andi
 	sjmp	exec_op_imm_done
@@ -668,6 +676,101 @@ exec_addi:
 	mov	a, @R1
 	addc	a, immediate_3
 	mov	@R0, a
+
+	ret
+
+exec_slti_sltiu:
+	AR1	= 1
+	funct3_bit_0__set_if_unsigned_cleared_if_signed	= (((funct3 - 0x20) * 8) + 0)
+
+	; Determine if we need to do a signed comparison or not.
+	jb	funct3_bit_0__set_if_unsigned_cleared_if_signed, slti_sltiu_check_unsigned
+
+	; We're doing a signed comparison.
+
+	; if rs1 is negative (sign bit set) and immediate is positive
+	; (sign bit cleared), rs1 < immediate.
+
+	; Jump if rs1 is negative. Do this by fetching the last byte in
+	; rs1, then restoring the source pointer, then performing the
+	; comparison.
+	mov	a, R1
+	mov	R2, a  ; Save the original R1 to R2.
+	add	a, #3
+	mov	R1, a
+	mov	a, @R1
+	mov	AR1, R2  ; Restore the original R1 from R2.
+	jb	ACC.7, slti_sltiu_rs1_is_negative_immediate_is_unknown
+
+	; rs1 is positive.
+
+	; if rs1 is positive (sign bit cleared) and immediate is
+	; negative (sign bit set), rs1 > immediate.
+
+	; Jump if immediate is negative.
+	jb	(((immediate_0 - 0x20) * 8) + 31), slti_sltiu_result_greater_than
+
+	; immediate is positive.
+
+	; if rs1 is positive (sign bit cleared) and immediate is positive
+	; (sign bit cleared), we just do an unsigned comparison.
+	sjmp	slti_sltiu_check_unsigned
+
+slti_sltiu_result_greater_than:
+	; rs1 > immediate.
+	clr	c
+	sjmp	slti_sltiu_final
+
+slti_sltiu_rs1_is_negative_immediate_is_unknown:
+	; rs1 is negative.
+
+	; Jump if immediate is negative.
+	jb	(((immediate_0 - 0x20) * 8) + 31), slti_sltiu_rs1_and_immediate_are_both_negative
+
+	; immediate is positive.
+
+	; rs1 < immediate.
+	setb	c
+	sjmp	slti_sltiu_final
+
+slti_sltiu_rs1_and_immediate_are_both_negative:
+	; rs1 is negative and immediate is negative. Since they're the
+	; same sign, we can just treat them like they're unsigned and do
+	; an unsigned comparison.
+	; Fall through here.
+
+slti_sltiu_check_unsigned:
+	; We're doing an unsigned comparison.
+
+	; Do comparison by rs1 - immediate.
+	clr	c
+	mov	a, @R1
+	subb	a, immediate_0
+	inc	R1
+	mov	a, @R1
+	subb	a, immediate_1
+	inc	R1
+	mov	a, @R1
+	subb	a, immediate_2
+	inc	R1
+	mov	a, @R1
+	subb	a, immediate_3
+
+slti_sltiu_final:
+	; if rs1 < immediate, the carry bit will be set. Clear A, then
+	; do "A = A + 0 + C" so that A is 1 when rs1 < immediate and 0
+	; otherwise.
+	clr	a
+	addc	a, #0
+
+	; Set the result in the register.
+	mov	@R0, a
+	inc	R0
+	mov	@R0, #0
+	inc	R0
+	mov	@R0, #0
+	inc	R0
+	mov	@R0, #0
 
 	ret
 
