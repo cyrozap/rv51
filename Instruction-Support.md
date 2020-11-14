@@ -13,11 +13,11 @@
 - [x] BGE
 - [x] BLTU
 - [x] BGEU
-- [ ] LB
-- [ ] LH
-- [ ] LW
-- [ ] LBU
-- [ ] LHU
+- [x] LB
+- [x] LH
+- [x] LW
+- [x] LBU
+- [x] LHU
 - [x] SB
 - [x] SH
 - [x] SW

@@ -127,6 +127,10 @@ decode_3:
 	lcall   exec_branch
 	sjmp    decode_done
 decode_4:
+	cjne    a, #0x03, decode_5  ; LOAD
+	lcall   exec_load
+	sjmp    decode_done
+decode_5:
 	cjne	a, #0x23, decode_6  ; STORE
 	lcall	exec_store
 	sjmp	decode_done
@@ -137,6 +141,165 @@ decode_6:
 decode_7:
 	sjmp	.
 decode_done:
+	ret
+
+exec_load:
+	lcall	extract_rd
+
+	; Return early if we're writing the zero register.
+	mov	a, rd
+	cjne	a, #0, exec_load_rd_not_zero
+	ret
+
+exec_load_rd_not_zero:
+	lcall	extract_funct3
+
+	; Bit 2 of funct3 indicates that we should zero-extend instead of sign-extend.
+	inst_funct3_bit_2__zero_extend = (((instruction_0 - 0x20) * 8) + 14)
+
+	lcall	extract_rs1
+	lcall	extract_imm_11_0
+
+	; Load rs1 into R1.
+	lcall	set_src_to_rs1_iram_addr
+
+	; Read the base address byte by byte, adding the immediate to it
+	; and storing the results in rs1_dat[0-3].
+	mov	a, @R1
+	add	a, immediate_0
+	mov	rs1_dat0, a
+	inc	R1
+
+	mov	a, @R1
+	addc	a, immediate_1
+	mov	rs1_dat1, a
+	inc	R1
+
+	; TODO: Use the upper two bytes to support paged XRAM and
+	; multiple address spaces (e.g., IRAM, SFRs).
+	;mov	a, @R1
+	;addc	a, immediate_2
+	;mov	rs1_dat2, a
+	;inc	R1
+
+	;mov	a, @R1
+	;addc	a, immediate_3
+	;mov	rs1_dat3, a
+
+	; Now that we have the final virtual source address, we need to
+	; convert that into a real dptr. Push the current dptr to the
+	; stack, then set the new dptr from the lowest two bytes of the
+	; source address.
+	push	dph
+	push	dpl
+	mov	dpl, rs1_dat0
+	mov	dph, rs1_dat1
+
+	; The data to LOAD gets stored in rd, so load rd into R0.
+	lcall	set_dst_to_rd_iram_addr
+
+	; We're always reading at least one byte. Use R2 to store the
+	; byte for sign extension.
+	movx	a, @dptr
+	mov	@R0, a
+	mov	R2, a
+
+	; Jump to the sign extension if we're done. Otherwise, continue.
+	mov	a, funct3
+	anl	a, #0x03
+	jz	exec_load_sign_extend_B
+	dec	funct3
+
+	; Read the next byte of the 16-bit word. Use R2 to store the
+	; byte for sign extension.
+	inc	dptr
+	movx    a, @dptr
+	inc	R0
+	mov     @R0, a
+	mov	R2, a
+
+	; Jump to the the sign extension if we're done. Otherwise,
+	; continue.
+	mov	a, funct3
+	anl	a, #0x03
+	jz	exec_load_sign_extend_H
+
+	; Read the next two bytes of the 32-bit word.
+	inc	dptr
+	movx    a, @dptr
+	inc	R0
+	mov     @R0, a
+
+	inc	dptr
+	movx    a, @dptr
+	inc	R0
+	mov     @R0, a
+
+	; We just finished loading a 32-bit word, so we don't do sign
+	; extension. Just jump to the end.
+	sjmp	exec_load_done
+
+exec_load_sign_extend_B:
+	; Extend the sign for three bytes.
+
+	; Jump if we should zero extend instead of sign extend.
+	jb	inst_funct3_bit_2__zero_extend, exec_load_zero_extend_B
+
+	; Check if the sign is positive or negative.
+	mov	a, R2
+	jnb	ACC.7, exec_load_zero_extend_B
+
+	; Sign was negative.
+	mov	a, #0xFF
+	sjmp	exec_load_sign_extend_B_final
+
+exec_load_zero_extend_B:
+	; Zero extend for three bytes.
+	mov     a, #0x00
+
+exec_load_sign_extend_B_final:
+	inc	R0
+	mov     @R0, a
+	inc	R0
+	mov     @R0, a
+	inc	R0
+	mov     @R0, a
+
+	; Done extending, jump to the end.
+	sjmp	exec_load_done
+
+exec_load_sign_extend_H:
+	; Extend the sign for two bytes.
+
+	; Jump if we should zero extend instead of sign extend.
+	jb	inst_funct3_bit_2__zero_extend, exec_load_zero_extend_H
+
+	; Check if the sign is positive or negative.
+	mov	a, R2
+	jnb	ACC.7, exec_load_zero_extend_H
+
+	; Sign was negative.
+	mov	a, #0xFF
+	sjmp	exec_load_sign_extend_H_final
+
+exec_load_zero_extend_H:
+	; Zero extend for two bytes.
+	mov     a, #0x00
+
+exec_load_sign_extend_H_final:
+	inc	R0
+	mov     @R0, a
+	inc	R0
+	mov     @R0, a
+
+	; Done extending, and we're at the end already so there's no
+	; need to jump.
+
+exec_load_done:
+	; Restore dptr.
+	pop	dpl
+	pop	dph
+
 	ret
 
 exec_branch:
