@@ -476,21 +476,31 @@ exec_jalr_rd_zero:
 	lcall	set_src_to_rs1_iram_addr
 
 	; Read the base address byte by byte, adding the immediate to
-	; it, clearing the lowest bit, and storing the results in dptr.
+	; it, clearing the lowest bit, and storing the results in R3:R2.
+	; This is the virtual jump address.
 	mov	a, @R1
 	add	a, immediate_0
 	anl	a, #0xFE
-	mov	dpl, a
+	mov	R2, a
 	inc	R1
 
 	mov	a, @R1
 	addc	a, immediate_1
-	mov	dph, a
+	mov	R3, a
 
 	; We can't jump anywhere but CODE memory, so just ignore the upper
 	; two bytes of rs1.
 
 	; TODO: Use immediate_2 to support paged CODE memory.
+
+	; To get the real jump address, add the virtual jump address to
+	; rv_code, then store the result in dptr.
+	mov	a, R2
+	add	a, #(rv_code)
+	mov	dpl, a
+	mov	a, R3
+	addc	a, #(rv_code >> 8)
+	mov	dph, a
 
 	ret
 
