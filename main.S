@@ -33,7 +33,10 @@
 ;   functions can modify R1.
 ; - Only the "rv_calc_pc" function can modify rv_pc_[0-1].
 
+rv_ram_base = 0x00000000
 rv_rom_base = 0x80000000
+rv_sfr_base = 0xC0000000
+rv_hyp_base = 0xE0000000
 
 ; Global variables
 instruction_0	= 0x20
@@ -178,16 +181,16 @@ exec_load_rd_not_zero:
 	mov	rs1_dat1, a
 	inc	R1
 
-	; TODO: Use the upper two bytes to support paged XRAM and
-	; multiple address spaces (e.g., IRAM, SFRs).
-	;mov	a, @R1
-	;addc	a, immediate_2
-	;mov	rs1_dat2, a
-	;inc	R1
+	; The upper bytes are used to access different address spaces.
+	; e.g., XDATA, CODE, SFR, hypercall registers, etc.
+	mov	a, @R1
+	addc	a, immediate_2
+	mov	rs1_dat2, a
+	inc	R1
 
-	;mov	a, @R1
-	;addc	a, immediate_3
-	;mov	rs1_dat3, a
+	mov	a, @R1
+	addc	a, immediate_3
+	mov	rs1_dat3, a
 
 	; Now that we have the final virtual source address, we need to
 	; convert that into a real dptr. Push the current dptr to the
@@ -201,6 +204,18 @@ exec_load_rd_not_zero:
 	; The data to LOAD gets stored in rd, so load rd into R0.
 	lcall	set_dst_to_rd_iram_addr
 
+	; Check what address space we're reading.
+	clr	c
+	mov	a, rs1_dat3
+	subb	a, #((rv_rom_base - rv_ram_base) >> 24)
+	jc	exec_load_lt_80_xdata
+	subb	a, #((rv_sfr_base - rv_rom_base) >> 24)
+	jc	exec_load_lt_C0_code
+	subb	a, #((rv_hyp_base - rv_sfr_base) >> 24)
+	jc	exec_load_lt_E0_sfr
+	sjmp	exec_load_ge_E0_hyp
+
+exec_load_lt_80_xdata:
 	; We're always reading at least one byte. Use R2 to store the
 	; byte for sign extension.
 	movx	a, @dptr
@@ -241,6 +256,73 @@ exec_load_rd_not_zero:
 	; We just finished loading a 32-bit word, so we don't do sign
 	; extension. Just jump to the end.
 	sjmp	exec_load_done
+
+exec_load_lt_C0_code:
+	; To get the real CODE address, add the virtual address to
+	; rv_code, then store the result in dptr.
+	mov	a, dpl
+	add	a, #(rv_code)
+	mov	dpl, a
+	mov	a, dph
+	addc	a, #(rv_code >> 8)
+	mov	dph, a
+
+	; We're always reading at least one byte. Use R2 to store the
+	; byte for sign extension.
+	clr	a
+	movc	a, @a+dptr
+	mov	@R0, a
+	mov	R2, a
+
+	; Jump to the sign extension if we're done. Otherwise, continue.
+	mov	a, funct3
+	anl	a, #0x03
+	jz	exec_load_sign_extend_B
+	dec	funct3
+
+	; Read the next byte of the 16-bit word. Use R2 to store the
+	; byte for sign extension.
+	inc	dptr
+	clr	a
+	movc	a, @a+dptr
+	inc	R0
+	mov     @R0, a
+	mov	R2, a
+
+	; Jump to the the sign extension if we're done. Otherwise,
+	; continue.
+	mov	a, funct3
+	anl	a, #0x03
+	jz	exec_load_sign_extend_H
+
+	; Read the next two bytes of the 32-bit word.
+	inc	dptr
+	clr	a
+	movc	a, @a+dptr
+	inc	R0
+	mov     @R0, a
+
+	inc	dptr
+	clr	a
+	movc	a, @a+dptr
+	inc	R0
+	mov     @R0, a
+
+	; We just finished loading a 32-bit word, so we don't do sign
+	; extension. Just jump to the end.
+	sjmp	exec_load_done
+
+exec_load_lt_E0_sfr:
+exec_load_ge_E0_hyp:
+	; Unimplemented--return zero for now.
+	mov	@R0, #0
+	inc	R0
+	mov	@R0, #0
+	inc	R0
+	mov	@R0, #0
+	inc	R0
+	mov	@R0, #0
+	sjmp    exec_load_done
 
 exec_load_sign_extend_B:
 	; Extend the sign for three bytes.
