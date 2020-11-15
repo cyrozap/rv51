@@ -39,7 +39,7 @@
 - [x] SRL
 - [x] SRA
 - [x] OR
-- [ ] AND
+- [x] AND
 - [ ] FENCE
 - [ ] ECALL
 - [ ] EBREAK
