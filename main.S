@@ -105,43 +105,45 @@ decode_opcode:
 	; Extract the opcode from the first byte of the instruction.
 	mov	a, instruction_0
 	anl	a, #0x7F
+	mov	R2, a
+
 	; Opcode dispatch.
-	cjne	a, #0x37, decode_0  ; LUI
+	cjne	R2, #0x37, decode_0  ; LUI
 	lcall	exec_lui
 	sjmp	decode_done
 decode_0:
-	cjne    a, #0x17, decode_1  ; AUIPC
+	cjne    R2, #0x17, decode_1  ; AUIPC
 	lcall   exec_auipc
 	sjmp    decode_done
 decode_1:
-	cjne    a, #0x6F, decode_2  ; JAL
+	cjne    R2, #0x6F, decode_2  ; JAL
 	lcall   exec_jal
 	sjmp    decode_done
 decode_2:
-	cjne    a, #0x67, decode_3  ; JALR
+	cjne    R2, #0x67, decode_3  ; JALR
 	lcall	extract_funct3
-	mov	a, funct3
-	cjne	a, #0, decode_3
+	mov	R3, funct3
+	cjne	R3, #0, decode_3
 	lcall   exec_jalr
 	sjmp    decode_done
 decode_3:
-	cjne    a, #0x63, decode_4  ; BRANCH
+	cjne    R2, #0x63, decode_4  ; BRANCH
 	lcall   exec_branch
 	sjmp    decode_done
 decode_4:
-	cjne    a, #0x03, decode_5  ; LOAD
+	cjne    R2, #0x03, decode_5  ; LOAD
 	lcall   exec_load
 	sjmp    decode_done
 decode_5:
-	cjne	a, #0x23, decode_6  ; STORE
+	cjne	R2, #0x23, decode_6  ; STORE
 	lcall	exec_store
 	sjmp	decode_done
 decode_6:
-	cjne	a, #0x13, decode_7  ; OP-IMM
+	cjne	R2, #0x13, decode_7  ; OP-IMM
 	lcall	exec_op_imm
 	sjmp	decode_done
 decode_7:
-	cjne	a, #0x33, decode_8  ; OP
+	cjne	R2, #0x33, decode_8  ; OP
 	lcall	exec_op
 	sjmp	decode_done
 decode_8:
