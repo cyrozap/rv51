@@ -499,18 +499,25 @@ branch_rs1_and_rs2_are_both_negative:
 branch_check_lt_ge_unsigned:
 	; We're doing an unsigned comparison.
 
-	; Do comparison by rs1 - rs2.
+	; Compare rs1 and rs2 byte-by-byte, from most significant to
+	; least significant, until a difference is found. If the carry
+	; bit is set, then rs1 < rs2. If the carry bit is not set and
+	; the result is non-zero, then rs1 > rs2.
 	clr	c
-	mov	a, immediate_0
-	subb	a, rd
-	mov	a, immediate_1
-	subb	a, funct3
-	mov	a, immediate_2
-	subb	a, rs1
 	mov	a, immediate_3
 	subb	a, rs2
-
-	; if rs1 < rs2, the carry bit will be set.
+	jc	branch_lt_ge_result_less_than
+	jnz	branch_lt_ge_result_greater_than_or_equal_to
+	mov	a, immediate_2
+	subb	a, rs1
+	jc	branch_lt_ge_result_less_than
+	jnz	branch_lt_ge_result_greater_than_or_equal_to
+	mov	a, immediate_1
+	subb	a, funct3
+	jc	branch_lt_ge_result_less_than
+	jnz	branch_lt_ge_result_greater_than_or_equal_to
+	mov	a, immediate_0
+	subb	a, rd
 	jc	branch_lt_ge_result_less_than
 
 branch_lt_ge_result_greater_than_or_equal_to:
@@ -869,8 +876,14 @@ exec_slli_loop:
 	ret
 
 exec_slti_sltiu:
-	AR1	= 1
 	funct3_bit_0__set_if_unsigned_cleared_if_signed	= (((funct3 - 0x20) * 8) + 0)
+
+	; Offset R1 by 3 because the unsigned comparison process starts
+	; from the high byte, and the sign comparison needs to check the
+	; high bit.
+	inc	R1
+	inc	R1
+	inc	R1
 
 	; Determine if we need to do a signed comparison or not.
 	jb	funct3_bit_0__set_if_unsigned_cleared_if_signed, slti_sltiu_check_unsigned
@@ -881,14 +894,8 @@ exec_slti_sltiu:
 	; (sign bit cleared), rs1 < immediate.
 
 	; Jump if rs1 is negative. Do this by fetching the last byte in
-	; rs1, then restoring the source pointer, then performing the
-	; comparison.
-	mov	a, R1
-	mov	R2, a  ; Save the original R1 to R2.
-	add	a, #3
-	mov	R1, a
+	; rs1 and checking if bit 7 is set.
 	mov	a, @R1
-	mov	AR1, R2  ; Restore the original R1 from R2.
 	jb	ACC.7, slti_sltiu_rs1_is_negative_immediate_is_unknown
 
 	; rs1 is positive.
@@ -931,19 +938,27 @@ slti_sltiu_rs1_and_immediate_are_both_negative:
 slti_sltiu_check_unsigned:
 	; We're doing an unsigned comparison.
 
-	; Do comparison by rs1 - immediate.
+	; Compare rs1 and the immediate byte-by-byte, from most
+	; significant to least significant, until a difference is found.
+	; If the carry bit is set, then rs1 < immediate.
 	clr	c
 	mov	a, @R1
-	subb	a, immediate_0
-	inc	R1
-	mov	a, @R1
-	subb	a, immediate_1
-	inc	R1
+	subb	a, immediate_3
+	jc	slti_sltiu_final
+	jnz	slti_sltiu_final
+	dec	R1
 	mov	a, @R1
 	subb	a, immediate_2
-	inc	R1
+	jc	slti_sltiu_final
+	jnz	slti_sltiu_final
+	dec	R1
 	mov	a, @R1
-	subb	a, immediate_3
+	subb	a, immediate_1
+	jc	slti_sltiu_final
+	jnz	slti_sltiu_final
+	dec	R1
+	mov	a, @R1
+	subb	a, immediate_0
 
 slti_sltiu_final:
 	; if rs1 < immediate, the carry bit will be set. Clear A, then
