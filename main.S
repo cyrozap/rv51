@@ -753,49 +753,49 @@ exec_op_imm_rd_not_zero:
 	lcall	extract_funct3
 	lcall	extract_rs1
 	lcall	extract_imm_11_0
+	lcall	extract_funct7
 
 	; Load the dst and src addresses into R0 and R1, respectively.
 	lcall	set_dst_to_rd_iram_addr
 	lcall	set_src_to_rs1_iram_addr
 
-	; Compare funct3.
-	mov	a, funct3
-	cjne	a, #0, exec_op_imm_0  ; ADDI
+	; Compare funct3 and sometimes funct7.
+	mov	R3, funct3
+	mov	R7, funct7
+
+	cjne	R3, #0, exec_op_imm_0  ; ADDI
 	lcall	exec_addi
 	sjmp	exec_op_imm_done
 exec_op_imm_0:
-	cjne	a, #1, exec_op_imm_1  ; SLLI
-	lcall	extract_funct7
-	mov	a, funct7
-	cjne	a, #0, exec_op_imm_1
+	cjne	R3, #1, exec_op_imm_1  ; SLLI
+	cjne	R7, #0, exec_op_imm_1
 	lcall	exec_slli
 	sjmp	exec_op_imm_done
 exec_op_imm_1:
-	cjne	a, #2, exec_op_imm_2  ; SLTI
+	cjne	R3, #2, exec_op_imm_2  ; SLTI
 	lcall	exec_slti_sltiu
 	sjmp	exec_op_imm_done
 exec_op_imm_2:
-	cjne	a, #3, exec_op_imm_3  ; SLTIU
+	cjne	R3, #3, exec_op_imm_3  ; SLTIU
 	lcall	exec_slti_sltiu
 	sjmp	exec_op_imm_done
 exec_op_imm_3:
-	cjne	a, #4, exec_op_imm_4  ; XORI
+	cjne	R3, #4, exec_op_imm_4  ; XORI
 	lcall	exec_xori
 	sjmp	exec_op_imm_done
 exec_op_imm_4:
-	cjne	a, #5, exec_op_imm_5  ; SRLI/SRAI
-	lcall	extract_funct7
-	mov	a, funct7
+	cjne	R3, #5, exec_op_imm_5  ; SRLI/SRAI
+	mov	a, R7
 	anl	a, #0xDF
 	cjne	a, #0, exec_op_imm_5
 	lcall	exec_srli_srai
 	sjmp	exec_op_imm_done
 exec_op_imm_5:
-	cjne	a, #6, exec_op_imm_6  ; ORI
+	cjne	R3, #6, exec_op_imm_6  ; ORI
 	lcall	exec_ori
 	sjmp	exec_op_imm_done
 exec_op_imm_6:
-	cjne	a, #7, exec_op_imm_7  ; ANDI
+	cjne	R3, #7, exec_op_imm_7  ; ANDI
 	lcall	exec_andi
 	sjmp	exec_op_imm_done
 exec_op_imm_7:
