@@ -36,8 +36,8 @@
 - [ ] SLT
 - [ ] SLTU
 - [ ] XOR
-- [ ] SRL
-- [ ] SRA
+- [x] SRL
+- [x] SRA
 - [ ] OR
 - [ ] AND
 - [ ] FENCE

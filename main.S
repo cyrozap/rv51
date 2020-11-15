@@ -1185,6 +1185,13 @@ exec_op_0_1:
 	lcall	exec_sll
 	sjmp	exec_op_done
 exec_op_1:
+	cjne	R3, #5, exec_op_5  ; SRL/SRA
+	mov	a, R7
+	anl	a, #0xDF
+	cjne	a, #0x00, exec_op_5
+	lcall	exec_srl_sra
+	sjmp	exec_op_done
+exec_op_5:
 	sjmp	.
 exec_op_done:
 	ret
@@ -1276,6 +1283,77 @@ exec_sll_loop:
 	mov	rs1_dat3, a
 	djnz	R2, exec_sll_loop
 
+	; Store the result in the destination register.
+	mov	@R0, rs1_dat0
+	inc	R0
+	mov	@R0, rs1_dat1
+	inc	R0
+	mov	@R0, rs1_dat2
+	inc	R0
+	mov	@R0, rs1_dat3
+
+	ret
+
+exec_srl_sra:
+	; Get the shift amount from the lower five bits of rs2.
+	lcall	set_src_to_rs2_iram_addr
+	mov	a, @R1
+	anl	a, #0x1F
+
+	; Return early if the shift is zero.
+	jnz	exec_srl_sra_shift_not_zero
+	ret
+
+exec_srl_sra_shift_not_zero:
+	; Save the shift amount in R2.
+	mov	R2, a
+
+	; Jump if this is an arithmetic right shift.
+	jb	(((funct7 - 0x20) * 8) + 5), exec_srl_sra_arith
+
+exec_srl_sra_loop:
+	clr	c
+	mov	a, rs1_dat3
+	rrc	a
+	mov	rs1_dat3, a
+	mov	a, rs1_dat2
+	rrc	a
+	mov	rs1_dat2, a
+	mov	a, rs1_dat1
+	rrc	a
+	mov	rs1_dat1, a
+	mov	a, rs1_dat0
+	rrc	a
+	mov	rs1_dat0, a
+	djnz	R2, exec_srl_sra_loop
+	sjmp	exec_srl_sra_done
+
+exec_srl_sra_arith:
+	; Do the regular right shift if the sign bit is clear.
+	mov	a, rs1_dat3
+	jnb	ACC.7, exec_srl_sra_loop
+
+	; Fall through for the shift with the sign bit set.
+
+exec_srl_sra_loop_arith:
+	setb	c
+	mov	a, rs1_dat3
+	rrc	a
+	mov	rs1_dat3, a
+	mov	a, rs1_dat2
+	rrc	a
+	mov	rs1_dat2, a
+	mov	a, rs1_dat1
+	rrc	a
+	mov	rs1_dat1, a
+	mov	a, rs1_dat0
+	rrc	a
+	mov	rs1_dat0, a
+	djnz	R2, exec_srl_sra_loop_arith
+
+	; Fall through when done.
+
+exec_srl_sra_done:
 	; Store the result in the destination register.
 	mov	@R0, rs1_dat0
 	inc	R0
