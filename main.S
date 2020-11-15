@@ -1166,12 +1166,20 @@ exec_op_rd_not_zero:
 	; Load the second src address into R1.
 	lcall	set_src_to_rs2_iram_addr
 
-	; Compare funct3.
-	mov	a, funct3
-	cjne	a, #0, exec_op_0  ; ADD
+	; Compare funct3 and funct7.
+	mov	R3, funct3
+	mov	R7, funct7
+
+	cjne	R3, #0, exec_op_0_0  ; ADD
+	cjne	R7, #0x00, exec_op_0_0
 	lcall	exec_add
 	sjmp	exec_op_done
-exec_op_0:
+exec_op_0_0:
+	cjne	R3, #0, exec_op_0_1  ; SUB
+	cjne	R7, #0x20, exec_op_0_1
+	lcall	exec_sub
+	sjmp	exec_op_done
+exec_op_0_1:
 	sjmp	.
 exec_op_done:
 	ret
@@ -1200,6 +1208,35 @@ exec_add:
 
 	mov	a, rs1_dat3
 	addc	a, @R1
+	mov	@R0, a
+
+	ret
+
+exec_sub:
+	; For each byte in the source and destination registers, SUB the
+	; first source byte with the corresponding second source byte
+	; and store the result in the corresponding destination byte.
+	clr	c
+	mov	a, rs1_dat0
+	subb	a, @R1
+	mov	@R0, a
+	inc	R1
+	inc	R0
+
+	mov	a, rs1_dat1
+	subb	a, @R1
+	mov	@R0, a
+	inc	R1
+	inc	R0
+
+	mov	a, rs1_dat2
+	subb	a, @R1
+	mov	@R0, a
+	inc	R1
+	inc	R0
+
+	mov	a, rs1_dat3
+	subb	a, @R1
 	mov	@R0, a
 
 	ret
