@@ -109,62 +109,54 @@ decode_opcode:
 
 	; Opcode dispatch.
 	cjne	R2, #0x37, decode_0  ; LUI
-	lcall	exec_lui
-	sjmp	decode_done
+	ljmp	exec_lui
 decode_0:
 	cjne	R2, #0x17, decode_1  ; AUIPC
-	lcall	exec_auipc
-	sjmp	decode_done
+	ljmp	exec_auipc
 decode_1:
 	cjne	R2, #0x6F, decode_2  ; JAL
-	lcall	exec_jal
-	sjmp	decode_done
+	ljmp	exec_jal
 decode_2:
 	cjne	R2, #0x67, decode_3  ; JALR
 	lcall	extract_funct3
 	mov	R3, funct3
 	cjne	R3, #0, decode_3
-	lcall	exec_jalr
-	sjmp	decode_done
+	ljmp	exec_jalr
 decode_3:
 	cjne	R2, #0x63, decode_4  ; BRANCH
-	lcall	exec_branch
-	sjmp	decode_done
+	ljmp	exec_branch
 decode_4:
 	cjne	R2, #0x03, decode_5  ; LOAD
-	lcall	exec_load
-	sjmp	decode_done
+	ljmp	exec_load
 decode_5:
 	cjne	R2, #0x23, decode_6  ; STORE
-	lcall	exec_store
-	sjmp	decode_done
+	ljmp	exec_store
 decode_6:
 	cjne	R2, #0x13, decode_7  ; OP-IMM
-	lcall	exec_op_imm
-	sjmp	decode_done
+	ljmp	exec_op_imm
 decode_7:
 	cjne	R2, #0x33, decode_8  ; OP
-	lcall	exec_op
-	sjmp	decode_done
+	ljmp	exec_op
 decode_8:
 	cjne	R2, #0x0F, decode_9  ; MISC-MEM
 	; FENCE instructions are a no-op because this virtual core is
 	; entirely in-order, meaning all memory operations are already
 	; guaranteed to finish before the instructions that follow them.
-	sjmp	decode_done
+	ret
 decode_9:
 	cjne	R2, #0x73, decode_10  ; SYSTEM
+	jb	(((instruction_0 - 0x20) * 8) + 12), exec_ebreak
 	; Ignore ECALL for now.
-	jnb	(((instruction_0 - 0x20) * 8) + 12), decode_done
+	ret
+exec_ebreak:
 	; EBREAK is a no-op, but with an explicit "nop" instruction so
 	; we can both easily break on it in an 8051 debugger while
 	; ignoring it on real hardware.
 	nop
-	sjmp	decode_done
-decode_10:
-	sjmp	.
-decode_done:
 	ret
+decode_10:
+	; Unrecognized instruction or execution function didn't "ret".
+	sjmp	.
 
 exec_load:
 	lcall	extract_rd
@@ -781,44 +773,35 @@ exec_op_imm_rd_not_zero:
 	mov	R7, funct7
 
 	cjne	R3, #0, exec_op_imm_0  ; ADDI
-	lcall	exec_addi
-	sjmp	exec_op_imm_done
+	ljmp	exec_addi
 exec_op_imm_0:
 	cjne	R3, #1, exec_op_imm_1  ; SLLI
 	cjne	R7, #0, exec_op_imm_1
-	lcall	exec_slli
-	sjmp	exec_op_imm_done
+	ljmp	exec_slli
 exec_op_imm_1:
 	cjne	R3, #2, exec_op_imm_2  ; SLTI
-	lcall	exec_slti_sltiu
-	sjmp	exec_op_imm_done
+	ljmp	exec_slti_sltiu
 exec_op_imm_2:
 	cjne	R3, #3, exec_op_imm_3  ; SLTIU
-	lcall	exec_slti_sltiu
-	sjmp	exec_op_imm_done
+	ljmp	exec_slti_sltiu
 exec_op_imm_3:
 	cjne	R3, #4, exec_op_imm_4  ; XORI
-	lcall	exec_xori
-	sjmp	exec_op_imm_done
+	ljmp	exec_xori
 exec_op_imm_4:
 	cjne	R3, #5, exec_op_imm_5  ; SRLI/SRAI
 	mov	a, R7
 	anl	a, #0xDF
 	cjne	a, #0, exec_op_imm_5
-	lcall	exec_srli_srai
-	sjmp	exec_op_imm_done
+	ljmp	exec_srli_srai
 exec_op_imm_5:
 	cjne	R3, #6, exec_op_imm_6  ; ORI
-	lcall	exec_ori
-	sjmp	exec_op_imm_done
+	ljmp	exec_ori
 exec_op_imm_6:
 	cjne	R3, #7, exec_op_imm_7  ; ANDI
-	lcall	exec_andi
-	sjmp	exec_op_imm_done
+	ljmp	exec_andi
 exec_op_imm_7:
+	; Unrecognized instruction or execution function didn't "ret".
 	sjmp	.
-exec_op_imm_done:
-	ret
 
 exec_addi:
 	; For each byte in the source and destination registers, ADD the
@@ -1189,44 +1172,36 @@ exec_op_rd_not_zero:
 
 	cjne	R3, #0, exec_op_0_0  ; ADD
 	cjne	R7, #0x00, exec_op_0_0
-	lcall	exec_add
-	sjmp	exec_op_done
+	ljmp	exec_add
 exec_op_0_0:
 	cjne	R3, #0, exec_op_0_1  ; SUB
 	cjne	R7, #0x20, exec_op_0_1
-	lcall	exec_sub
-	sjmp	exec_op_done
+	ljmp	exec_sub
 exec_op_0_1:
 	cjne	R3, #1, exec_op_1  ; SLL
 	cjne	R7, #0x00, exec_op_1
-	lcall	exec_sll
-	sjmp	exec_op_done
+	ljmp	exec_sll
 exec_op_1:
 	cjne	R3, #4, exec_op_4  ; XOR
 	cjne	R7, #0x00, exec_op_4
-	lcall	exec_xor
-	sjmp	exec_op_done
+	ljmp	exec_xor
 exec_op_4:
 	cjne	R3, #5, exec_op_5  ; SRL/SRA
 	mov	a, R7
 	anl	a, #0xDF
 	cjne	a, #0x00, exec_op_5
-	lcall	exec_srl_sra
-	sjmp	exec_op_done
+	ljmp	exec_srl_sra
 exec_op_5:
 	cjne	R3, #6, exec_op_6  ; OR
 	cjne	R7, #0x00, exec_op_6
-	lcall	exec_or
-	sjmp	exec_op_done
+	ljmp	exec_or
 exec_op_6:
 	cjne	R3, #7, exec_op_7  ; AND
 	cjne	R7, #0x00, exec_op_7
-	lcall	exec_and
-	sjmp	exec_op_done
+	ljmp	exec_and
 exec_op_7:
+	; Unrecognized instruction or execution function didn't "ret".
 	sjmp	.
-exec_op_done:
-	ret
 
 exec_add:
 	; For each byte in the source and destination registers, ADD the
