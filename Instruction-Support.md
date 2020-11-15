@@ -41,8 +41,8 @@
 - [x] OR
 - [x] AND
 - [x] FENCE
-- [ ] ECALL
-- [ ] EBREAK
+- [x] ECALL
+- [x] EBREAK
 
 
 ## RV32M Standard Extension

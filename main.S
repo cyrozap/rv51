@@ -153,6 +153,15 @@ decode_8:
 	; guaranteed to finish before the instructions that follow them.
 	sjmp	decode_done
 decode_9:
+	cjne	R2, #0x73, decode_10  ; SYSTEM
+	; Ignore ECALL for now.
+	jnb	(((instruction_0 - 0x20) * 8) + 12), decode_done
+	; EBREAK is a no-op, but with an explicit "nop" instruction so
+	; we can both easily break on it in an 8051 debugger while
+	; ignoring it on real hardware.
+	nop
+	sjmp	decode_done
+decode_10:
 	sjmp	.
 decode_done:
 	ret
