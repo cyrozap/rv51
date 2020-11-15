@@ -32,7 +32,7 @@
 - [x] SRAI
 - [x] ADD
 - [x] SUB
-- [ ] SLL
+- [x] SLL
 - [ ] SLT
 - [ ] SLTU
 - [ ] XOR

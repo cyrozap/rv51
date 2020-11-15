@@ -1180,6 +1180,11 @@ exec_op_0_0:
 	lcall	exec_sub
 	sjmp	exec_op_done
 exec_op_0_1:
+	cjne	R3, #1, exec_op_1  ; SLL
+	cjne	R7, #0x00, exec_op_1
+	lcall	exec_sll
+	sjmp	exec_op_done
+exec_op_1:
 	sjmp	.
 exec_op_done:
 	ret
@@ -1238,6 +1243,47 @@ exec_sub:
 	mov	a, rs1_dat3
 	subb	a, @R1
 	mov	@R0, a
+
+	ret
+
+exec_sll:
+	; Get the shift amount from the lower five bits of rs2.
+	lcall	set_src_to_rs2_iram_addr
+	mov	a, @R1
+	anl	a, #0x1F
+
+	; Return early if the shift is zero.
+	jnz	exec_sll_shift_not_zero
+	ret
+
+exec_sll_shift_not_zero:
+	; Save the shift amount in R2.
+	mov	R2, a
+
+exec_sll_loop:
+	clr	c
+	mov	a, rs1_dat0
+	rlc	a
+	mov	rs1_dat0, a
+	mov	a, rs1_dat1
+	rlc	a
+	mov	rs1_dat1, a
+	mov	a, rs1_dat2
+	rlc	a
+	mov	rs1_dat2, a
+	mov	a, rs1_dat3
+	rlc	a
+	mov	rs1_dat3, a
+	djnz	R2, exec_sll_loop
+
+	; Store the result in the destination register.
+	mov	@R0, rs1_dat0
+	inc	R0
+	mov	@R0, rs1_dat1
+	inc	R0
+	mov	@R0, rs1_dat2
+	inc	R0
+	mov	@R0, rs1_dat3
 
 	ret
 
