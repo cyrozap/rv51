@@ -40,7 +40,7 @@
 - [x] SRA
 - [x] OR
 - [x] AND
-- [ ] FENCE
+- [x] FENCE
 - [ ] ECALL
 - [ ] EBREAK
 

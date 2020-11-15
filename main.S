@@ -147,6 +147,12 @@ decode_7:
 	lcall	exec_op
 	sjmp	decode_done
 decode_8:
+	cjne	R2, #0x0F, decode_9  ; MISC-MEM
+	; FENCE instructions are a no-op because this virtual core is
+	; entirely in-order, meaning all memory operations are already
+	; guaranteed to finish before the instructions that follow them.
+	sjmp	decode_done
+decode_9:
 	sjmp	.
 decode_done:
 	ret
