@@ -112,28 +112,28 @@ decode_opcode:
 	lcall	exec_lui
 	sjmp	decode_done
 decode_0:
-	cjne    R2, #0x17, decode_1  ; AUIPC
-	lcall   exec_auipc
-	sjmp    decode_done
+	cjne	R2, #0x17, decode_1  ; AUIPC
+	lcall	exec_auipc
+	sjmp	decode_done
 decode_1:
-	cjne    R2, #0x6F, decode_2  ; JAL
-	lcall   exec_jal
-	sjmp    decode_done
+	cjne	R2, #0x6F, decode_2  ; JAL
+	lcall	exec_jal
+	sjmp	decode_done
 decode_2:
-	cjne    R2, #0x67, decode_3  ; JALR
+	cjne	R2, #0x67, decode_3  ; JALR
 	lcall	extract_funct3
 	mov	R3, funct3
 	cjne	R3, #0, decode_3
-	lcall   exec_jalr
-	sjmp    decode_done
+	lcall	exec_jalr
+	sjmp	decode_done
 decode_3:
-	cjne    R2, #0x63, decode_4  ; BRANCH
-	lcall   exec_branch
-	sjmp    decode_done
+	cjne	R2, #0x63, decode_4  ; BRANCH
+	lcall	exec_branch
+	sjmp	decode_done
 decode_4:
-	cjne    R2, #0x03, decode_5  ; LOAD
-	lcall   exec_load
-	sjmp    decode_done
+	cjne	R2, #0x03, decode_5  ; LOAD
+	lcall	exec_load
+	sjmp	decode_done
 decode_5:
 	cjne	R2, #0x23, decode_6  ; STORE
 	lcall	exec_store
@@ -248,9 +248,9 @@ exec_load_lt_80_xdata:
 	; Read the next byte of the 16-bit word. Use R2 to store the
 	; byte for sign extension.
 	inc	dptr
-	movx    a, @dptr
+	movx	a, @dptr
 	inc	R0
-	mov     @R0, a
+	mov	@R0, a
 	mov	R2, a
 
 	; Jump to the the sign extension if we're done. Otherwise,
@@ -261,14 +261,14 @@ exec_load_lt_80_xdata:
 
 	; Read the next two bytes of the 32-bit word.
 	inc	dptr
-	movx    a, @dptr
+	movx	a, @dptr
 	inc	R0
-	mov     @R0, a
+	mov	@R0, a
 
 	inc	dptr
-	movx    a, @dptr
+	movx	a, @dptr
 	inc	R0
-	mov     @R0, a
+	mov	@R0, a
 
 	; We just finished loading a 32-bit word, so we don't do sign
 	; extension. Just jump to the end.
@@ -303,7 +303,7 @@ exec_load_lt_C0_code:
 	clr	a
 	movc	a, @a+dptr
 	inc	R0
-	mov     @R0, a
+	mov	@R0, a
 	mov	R2, a
 
 	; Jump to the the sign extension if we're done. Otherwise,
@@ -317,13 +317,13 @@ exec_load_lt_C0_code:
 	clr	a
 	movc	a, @a+dptr
 	inc	R0
-	mov     @R0, a
+	mov	@R0, a
 
 	inc	dptr
 	clr	a
 	movc	a, @a+dptr
 	inc	R0
-	mov     @R0, a
+	mov	@R0, a
 
 	; We just finished loading a 32-bit word, so we don't do sign
 	; extension. Just jump to the end.
@@ -339,7 +339,7 @@ exec_load_ge_E0_hyp:
 	mov	@R0, #0
 	inc	R0
 	mov	@R0, #0
-	sjmp    exec_load_done
+	sjmp	exec_load_done
 
 exec_load_sign_extend_B:
 	; Extend the sign for three bytes.
@@ -357,15 +357,15 @@ exec_load_sign_extend_B:
 
 exec_load_zero_extend_B:
 	; Zero extend for three bytes.
-	mov     a, #0x00
+	mov	a, #0x00
 
 exec_load_sign_extend_B_final:
 	inc	R0
-	mov     @R0, a
+	mov	@R0, a
 	inc	R0
-	mov     @R0, a
+	mov	@R0, a
 	inc	R0
-	mov     @R0, a
+	mov	@R0, a
 
 	; Done extending, jump to the end.
 	sjmp	exec_load_done
@@ -386,13 +386,13 @@ exec_load_sign_extend_H:
 
 exec_load_zero_extend_H:
 	; Zero extend for two bytes.
-	mov     a, #0x00
+	mov	a, #0x00
 
 exec_load_sign_extend_H_final:
 	inc	R0
-	mov     @R0, a
+	mov	@R0, a
 	inc	R0
-	mov     @R0, a
+	mov	@R0, a
 
 	; Done extending, and we're at the end already so there's no
 	; need to jump.
@@ -717,9 +717,9 @@ exec_store_lt_80_xdata:
 
 	; Write the next byte of the 16-bit word.
 	inc	R1
-	mov     a, @R1
+	mov	a, @R1
 	inc	dptr
-	movx    @dptr, a
+	movx	@dptr, a
 
 	; Jump to the end if we're done. Otherwise, continue.
 	mov	a, funct3
@@ -727,14 +727,14 @@ exec_store_lt_80_xdata:
 
 	; Write the next two bytes of the 32-bit word.
 	inc	R1
-	mov     a, @R1
+	mov	a, @R1
 	inc	dptr
-	movx    @dptr, a
+	movx	@dptr, a
 
 	inc	R1
-	mov     a, @R1
+	mov	a, @R1
 	inc	dptr
-	movx    @dptr, a
+	movx	@dptr, a
 
 	; We're definitely done writing now, so jump to the end.
 	sjmp	exec_store_done
