@@ -35,7 +35,7 @@
 - [x] SLL
 - [ ] SLT
 - [ ] SLTU
-- [ ] XOR
+- [x] XOR
 - [x] SRL
 - [x] SRA
 - [x] OR

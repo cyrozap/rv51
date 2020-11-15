@@ -1185,6 +1185,11 @@ exec_op_0_1:
 	lcall	exec_sll
 	sjmp	exec_op_done
 exec_op_1:
+	cjne	R3, #4, exec_op_4  ; XOR
+	cjne	R7, #0x00, exec_op_4
+	lcall	exec_xor
+	sjmp	exec_op_done
+exec_op_4:
 	cjne	R3, #5, exec_op_5  ; SRL/SRA
 	mov	a, R7
 	anl	a, #0xDF
@@ -1301,6 +1306,34 @@ exec_sll_loop:
 	mov	@R0, rs1_dat2
 	inc	R0
 	mov	@R0, rs1_dat3
+
+	ret
+
+exec_xor:
+	; For each byte in the source and destination registers, XOR the
+	; first source byte with the corresponding second source byte
+	; and store the result in the corresponding destination byte.
+	mov	a, rs1_dat0
+	xrl	a, @R1
+	mov	@R0, a
+	inc	R1
+	inc	R0
+
+	mov	a, rs1_dat1
+	xrl	a, @R1
+	mov	@R0, a
+	inc	R1
+	inc	R0
+
+	mov	a, rs1_dat2
+	xrl	a, @R1
+	mov	@R0, a
+	inc	R1
+	inc	R0
+
+	mov	a, rs1_dat3
+	xrl	a, @R1
+	mov	@R0, a
 
 	ret
 
