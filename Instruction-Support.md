@@ -38,7 +38,7 @@
 - [ ] XOR
 - [x] SRL
 - [x] SRA
-- [ ] OR
+- [x] OR
 - [ ] AND
 - [ ] FENCE
 - [ ] ECALL

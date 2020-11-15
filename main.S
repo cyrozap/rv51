@@ -1192,6 +1192,11 @@ exec_op_1:
 	lcall	exec_srl_sra
 	sjmp	exec_op_done
 exec_op_5:
+	cjne	R3, #6, exec_op_6  ; OR
+	cjne	R7, #0x00, exec_op_6
+	lcall	exec_or
+	sjmp	exec_op_done
+exec_op_6:
 	sjmp	.
 exec_op_done:
 	ret
@@ -1362,6 +1367,34 @@ exec_srl_sra_done:
 	mov	@R0, rs1_dat2
 	inc	R0
 	mov	@R0, rs1_dat3
+
+	ret
+
+exec_or:
+	; For each byte in the source and destination registers, OR the
+	; first source byte with the corresponding second source byte
+	; and store the result in the corresponding destination byte.
+	mov	a, rs1_dat0
+	orl	a, @R1
+	mov	@R0, a
+	inc	R1
+	inc	R0
+
+	mov	a, rs1_dat1
+	orl	a, @R1
+	mov	@R0, a
+	inc	R1
+	inc	R0
+
+	mov	a, rs1_dat2
+	orl	a, @R1
+	mov	@R0, a
+	inc	R1
+	inc	R0
+
+	mov	a, rs1_dat3
+	orl	a, @R1
+	mov	@R0, a
 
 	ret
 
