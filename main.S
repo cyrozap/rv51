@@ -837,12 +837,6 @@ exec_addi:
 	ret
 
 exec_slli:
-	; Return early if the shift is zero.
-	mov	a, immediate_0
-	jnz	exec_slli_shift_not_zero
-	ret
-
-exec_slli_shift_not_zero:
 	; Read rs1 into its IRAM variable because we're going to be
 	; making a lot of modifications to it before storing the result
 	; in the destination register.
@@ -853,6 +847,10 @@ exec_slli_shift_not_zero:
 	mov	rs1_dat2, @R1
 	inc	R1
 	mov	rs1_dat3, @R1
+
+	; Skip shifting if the shift is zero.
+	mov	a, immediate_0
+	jz	exec_slli_shift_is_zero
 
 exec_slli_loop:
 	clr	c
@@ -870,6 +868,7 @@ exec_slli_loop:
 	mov	rs1_dat3, a
 	djnz	immediate_0, exec_slli_loop
 
+exec_slli_shift_is_zero:
 	mov	@R0, rs1_dat0
 	inc	R0
 	mov	@R0, rs1_dat1
