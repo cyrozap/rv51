@@ -1011,13 +1011,6 @@ exec_xori:
 	ret
 
 exec_srli_srai:
-	; Return early if the shift is zero.
-	mov	a, immediate_0
-	anl	a, #0x1F
-	jnz	exec_srli_srai_shift_not_zero
-	ret
-
-exec_srli_srai_shift_not_zero:
 	; Read rs1 into its IRAM variable because we're going to be
 	; making a lot of modifications to it before storing the result
 	; in the destination register.
@@ -1028,6 +1021,11 @@ exec_srli_srai_shift_not_zero:
 	mov	rs1_dat2, @R1
 	inc	R1
 	mov	rs1_dat3, @R1
+
+	; Skip shifting if the shift is zero.
+	mov	a, immediate_0
+	anl	a, #0x1F
+	jz	exec_srli_srai_done
 
 	jb	(((funct7 - 0x20) * 8) + 5), exec_srli_srai_arith
 
