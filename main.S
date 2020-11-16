@@ -1468,6 +1468,16 @@ exec_auipc_rd_not_zero:
 	lcall	extract_imm_31_12
 	lcall	rv_calc_pc
 
+	; Subtract 4 from the calculated PC, since it's currently
+	; pointing to the next instruction and we need it to be pointing
+	; to the current instruction.
+	mov	a, rv_pc_0
+	add	a, #-4
+	mov	rv_pc_0, a
+	mov	a, rv_pc_1
+	addc	a, #-1
+	mov	rv_pc_1, a
+
 	; Write the immediate directly to rd.
 	lcall	set_dst_to_rd_iram_addr
 
