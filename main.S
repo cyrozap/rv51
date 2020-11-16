@@ -1297,11 +1297,9 @@ exec_sll:
 	mov	a, @R1
 	anl	a, #0x1F
 
-	; Return early if the shift is zero.
-	jnz	exec_sll_shift_not_zero
-	ret
+	; Skip shifting if the shift is zero.
+	jz	exec_sll_shift_is_zero
 
-exec_sll_shift_not_zero:
 	; Save the shift amount in R2.
 	mov	R2, a
 
@@ -1321,6 +1319,7 @@ exec_sll_loop:
 	mov	rs1_dat3, a
 	djnz	R2, exec_sll_loop
 
+exec_sll_shift_is_zero:
 	; Store the result in the destination register.
 	mov	@R0, rs1_dat0
 	inc	R0
