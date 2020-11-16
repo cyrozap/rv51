@@ -146,8 +146,7 @@ decode_8:
 decode_9:
 	cjne	R2, #0x73, decode_10  ; SYSTEM
 	jb	(((instruction_0 - 0x20) * 8) + 12), exec_ebreak
-	; Ignore ECALL for now.
-	ret
+	ljmp	exec_ecall
 exec_ebreak:
 	; EBREAK is a no-op, but with an explicit "nop" instruction so
 	; we can both easily break on it in an 8051 debugger while
@@ -157,6 +156,27 @@ exec_ebreak:
 decode_10:
 	; Unrecognized instruction or execution function didn't "ret".
 	sjmp	.
+
+exec_ecall:
+	mov	R1, #(0x80 + (4 * 17))  ; Syscall number is in register a7 (x17).
+	mov	a, @R1
+
+	; Only support "exit" syscall.
+	cjne	a, #93, exec_ecall_done
+
+	mov	R1, #(0x80 + (4 * 10))  ; Exit retval is in register a0 (x10).
+	mov	a, @R1
+
+	; Write the retval to the serial buffer, in case the debugger
+	; supports it.
+	mov	SBUF, a
+
+	; Loop forever so the debugger can see the retval preserved in
+	; the RV registers, too.
+	sjmp	.
+
+exec_ecall_done:
+	ret
 
 exec_load:
 	lcall	extract_rd
