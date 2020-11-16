@@ -553,6 +553,32 @@ exec_jalr:
 	lcall	extract_rs1
 	lcall	extract_imm_11_0
 
+	; Read the jump address first, and if necessary write the link
+	; register second. It's necessary to perform these steps in that
+	; order to prevent overwriting the jump target when the source
+	; and destination registers are the same.
+
+	; Load rs1 into R1.
+	lcall	set_src_to_rs1_iram_addr
+
+	; Read the base address byte by byte, adding the immediate to
+	; it, clearing the lowest bit, and storing the results in
+	; rs1_dat[0-1]. This is the virtual jump address.
+	mov	a, @R1
+	add	a, immediate_0
+	anl	a, #0xFE
+	mov	rs1_dat0, a
+	inc	R1
+
+	mov	a, @R1
+	addc	a, immediate_1
+	mov	rs1_dat1, a
+
+	; We can't jump anywhere but CODE memory, so just ignore the upper
+	; two bytes of rs1.
+
+	; TODO: Use immediate_2 to support paged CODE memory.
+
 	; Skip writing the link register when rd is zero.
 	mov	a, rd
 	jz	exec_jalr_rd_zero
@@ -569,33 +595,12 @@ exec_jalr:
 	mov	@R0, #(rv_rom_base >> 24)
 
 exec_jalr_rd_zero:
-	; Load rs1 into R1.
-	lcall	set_src_to_rs1_iram_addr
-
-	; Read the base address byte by byte, adding the immediate to
-	; it, clearing the lowest bit, and storing the results in R3:R2.
-	; This is the virtual jump address.
-	mov	a, @R1
-	add	a, immediate_0
-	anl	a, #0xFE
-	mov	R2, a
-	inc	R1
-
-	mov	a, @R1
-	addc	a, immediate_1
-	mov	R3, a
-
-	; We can't jump anywhere but CODE memory, so just ignore the upper
-	; two bytes of rs1.
-
-	; TODO: Use immediate_2 to support paged CODE memory.
-
 	; To get the real jump address, add the virtual jump address to
-	; rv_code, then store the result in dptr.
-	mov	a, R2
+	; rv_code, then store the result in dptr to execute the jump.
+	mov	a, rs1_dat0
 	add	a, #(rv_code)
 	mov	dpl, a
-	mov	a, R3
+	mov	a, rs1_dat1
 	addc	a, #(rv_code >> 8)
 	mov	dph, a
 
