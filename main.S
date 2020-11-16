@@ -1364,11 +1364,9 @@ exec_srl_sra:
 	mov	a, @R1
 	anl	a, #0x1F
 
-	; Return early if the shift is zero.
-	jnz	exec_srl_sra_shift_not_zero
-	ret
+	; Skip shifting if the shift is zero.
+	jz	exec_srl_sra_done
 
-exec_srl_sra_shift_not_zero:
 	; Save the shift amount in R2.
 	mov	R2, a
 
