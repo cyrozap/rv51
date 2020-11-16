@@ -1232,30 +1232,56 @@ exec_add:
 	ret
 
 exec_sub:
-	; For each byte in the source and destination registers, SUB the
-	; first source byte with the corresponding second source byte
-	; and store the result in the corresponding destination byte.
-	clr	c
-	mov	a, rs1_dat0
-	subb	a, @R1
-	mov	@R0, a
+	; The 8051 SUBB instruction behaves very strangely when
+	; operating on numbers larger than 8 bits. To work around this,
+	; perform the two's complement on the second operand (rs2) to
+	; negate it, then add the two numbers.
+
+	; First, negate rs2 and store the result in IRAM. XRL doesn't
+	; affect the carry bit, so we can perform the bit inversion and
+	; the addition at the same time.
+	mov	a, @R1
+	xrl	a, #0xFF
+	add	a, #1
+	mov	rs2_dat0, a
 	inc	R1
+
+	mov	a, @R1
+	xrl	a, #0xFF
+	addc	a, #0
+	mov	rs2_dat1, a
+	inc	R1
+
+	mov	a, @R1
+	xrl	a, #0xFF
+	addc	a, #0
+	mov	rs2_dat2, a
+	inc	R1
+
+	mov	a, @R1
+	xrl	a, #0xFF
+	addc	a, #0
+	mov	rs2_dat3, a
+	inc	R1
+
+	; Now, add the first operand to the negated operand.
+	mov	a, rs1_dat0
+	add	a, rs2_dat0
+	mov	@R0, a
 	inc	R0
 
 	mov	a, rs1_dat1
-	subb	a, @R1
+	addc	a, rs2_dat1
 	mov	@R0, a
-	inc	R1
 	inc	R0
 
 	mov	a, rs1_dat2
-	subb	a, @R1
+	addc	a, rs2_dat2
 	mov	@R0, a
-	inc	R1
 	inc	R0
 
 	mov	a, rs1_dat3
-	subb	a, @R1
+	addc	a, rs2_dat3
 	mov	@R0, a
 
 	ret
