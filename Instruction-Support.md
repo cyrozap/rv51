@@ -33,8 +33,8 @@
 - [x] ADD
 - [x] SUB
 - [x] SLL
-- [ ] SLT
-- [ ] SLTU
+- [x] SLT
+- [x] SLTU
 - [x] XOR
 - [x] SRL
 - [x] SRA

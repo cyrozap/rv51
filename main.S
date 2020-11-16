@@ -1184,6 +1184,14 @@ exec_op_0_1:
 	cjne	R7, #0x00, exec_op_1
 	ljmp	exec_sll
 exec_op_1:
+	cjne	R3, #2, exec_op_2  ; SLT
+	cjne	R7, #0x00, exec_op_2
+	ljmp	exec_slt_sltu
+exec_op_2:
+	cjne	R3, #3, exec_op_3  ; SLTU
+	cjne	R7, #0x00, exec_op_3
+	ljmp	exec_slt_sltu
+exec_op_3:
 	cjne	R3, #4, exec_op_4  ; XOR
 	cjne	R7, #0x00, exec_op_4
 	ljmp	exec_xor
@@ -1325,6 +1333,118 @@ exec_sll_shift_is_zero:
 	mov	@R0, rs1_dat2
 	inc	R0
 	mov	@R0, rs1_dat3
+
+	ret
+
+exec_slt_sltu:
+	funct3_bit_0__set_if_unsigned_cleared_if_signed	= (((funct3 - 0x20) * 8) + 0)
+
+	; Load the second src address into R1.
+	lcall	set_src_to_rs2_iram_addr
+
+	; Load rs2 into rs2_dat[0-3].
+	mov	rs2_dat0, @R1
+	inc	R1
+	mov	rs2_dat1, @R1
+	inc	R1
+	mov	rs2_dat2, @R1
+	inc	R1
+	mov	rs2_dat3, @R1
+
+	; Determine if we need to do a signed comparison or not.
+	jb	funct3_bit_0__set_if_unsigned_cleared_if_signed, slt_sltu_check_unsigned
+
+	; We're doing a signed comparison.
+
+	; if rs1 is negative (sign bit set) and rs2 is positive
+	; (sign bit cleared), rs1 < rs2.
+
+	; Jump if rs1 is negative. Do this by fetching the last byte in
+	; rs1 and checking if bit 7 is set.
+	mov	a, rs1_dat3
+	jb	ACC.7, slt_sltu_rs1_is_negative_rs2_is_unknown
+
+	; rs1 is positive.
+
+	; if rs1 is positive (sign bit cleared) and rs2 is
+	; negative (sign bit set), rs1 > rs2.
+
+	; Jump if rs2 is negative. Do this by fetching the last byte in
+	; rs2 and checking if bit 7 is set.
+	mov	a, rs2_dat3
+	jb	ACC.7, slt_sltu_result_greater_than
+
+	; rs2 is positive.
+
+	; if rs1 is positive (sign bit cleared) and rs2 is positive
+	; (sign bit cleared), we just do an unsigned comparison.
+	sjmp	slt_sltu_check_unsigned
+
+slt_sltu_result_greater_than:
+	; rs1 > rs2.
+	clr	c
+	sjmp	slt_sltu_final
+
+slt_sltu_rs1_is_negative_rs2_is_unknown:
+	; rs1 is negative.
+
+	; Jump if rs2 is negative. Do this by fetching the last byte in
+	; rs2 and checking if bit 7 is set.
+	mov	a, rs2_dat3
+	jb	ACC.7, slt_sltu_rs1_and_rs2_are_both_negative
+
+	; rs2 is positive.
+
+	; rs1 < rs2.
+	setb	c
+	sjmp	slt_sltu_final
+
+slt_sltu_rs1_and_rs2_are_both_negative:
+	; rs1 is negative and rs2 is negative. Since they're the
+	; same sign, we can just treat them like they're unsigned and do
+	; an unsigned comparison.
+	; Fall through here.
+
+slt_sltu_check_unsigned:
+	; We're doing an unsigned comparison.
+
+	; Compare rs1 and the rs2 byte-by-byte, from most
+	; significant to least significant, until a difference is found.
+	; If the carry bit is set, then rs1 < rs2.
+	clr	c
+	mov	a, rs1_dat3
+	subb	a, rs2_dat3
+	jc	slt_sltu_final
+	jnz	slt_sltu_final
+	dec	R1
+	mov	a, rs1_dat2
+	subb	a, rs2_dat2
+	jc	slt_sltu_final
+	jnz	slt_sltu_final
+	dec	R1
+	mov	a, rs1_dat1
+	subb	a, rs2_dat1
+	jc	slt_sltu_final
+	jnz	slt_sltu_final
+	dec	R1
+	mov	a, rs1_dat0
+	subb	a, rs2_dat0
+
+slt_sltu_final:
+	; if rs1 < immediate, the carry bit will be set. Clear A, then
+	; do "A = A + 0 + C" so that A is 1 when rs1 < immediate and 0
+	; otherwise.
+	clr	a
+	addc	a, #0
+
+	; Set the result in the register.
+	mov	@R0, a
+	inc	R0
+	mov	@R0, #0
+	inc	R0
+	mov	@R0, #0
+	inc	R0
+	mov	@R0, #0
 
 	ret
 
