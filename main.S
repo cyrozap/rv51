@@ -242,7 +242,7 @@ exec_load_rd_not_zero:
 	jc	exec_load_lt_C0_code
 	subb	a, #((rv_hyp_base - rv_sfr_base) >> 24)
 	jc	exec_load_lt_E0_sfr
-	sjmp	exec_load_ge_E0_hyp
+	ljmp	exec_load_ge_E0_hyp
 
 exec_load_lt_80_xdata:
 	; We're always reading at least one byte. Use R2 to store the
@@ -254,7 +254,9 @@ exec_load_lt_80_xdata:
 	; Jump to the sign extension if we're done. Otherwise, continue.
 	mov	a, funct3
 	anl	a, #0x03
-	jz	exec_load_sign_extend_B
+	jnz	1$
+	ljmp	exec_load_sign_extend_B
+1$:
 	dec	funct3
 
 	; Read the next byte of the 16-bit word. Use R2 to store the
@@ -269,7 +271,9 @@ exec_load_lt_80_xdata:
 	; continue.
 	mov	a, funct3
 	anl	a, #0x03
-	jz	exec_load_sign_extend_H
+	jnz	2$
+	ljmp	exec_load_sign_extend_H
+2$:
 
 	; Read the next two bytes of the 32-bit word.
 	inc	dptr
@@ -284,7 +288,7 @@ exec_load_lt_80_xdata:
 
 	; We just finished loading a 32-bit word, so we don't do sign
 	; extension. Just jump to the end.
-	sjmp	exec_load_done
+	ljmp	exec_load_done
 
 exec_load_lt_C0_code:
 	; To get the real CODE address, add the virtual address to
@@ -342,6 +346,48 @@ exec_load_lt_C0_code:
 	sjmp	exec_load_done
 
 exec_load_lt_E0_sfr:
+	; We're always reading at least one byte. Use R2 to store the
+	; byte for sign extension.
+	mov	R3, rs1_dat0
+	lcall	sfr_byte_read
+	mov	@R0, a
+	mov	R2, a
+
+	; Jump to the sign extension if we're done. Otherwise, continue.
+	mov	a, funct3
+	anl	a, #0x03
+	jz	exec_load_sign_extend_B
+	dec	funct3
+
+	; Read the next byte of the 16-bit word. Use R2 to store the
+	; byte for sign extension.
+	inc	R3
+	lcall	sfr_byte_read
+	inc	R0
+	mov	@R0, a
+	mov	R2, a
+
+	; Jump to the the sign extension if we're done. Otherwise,
+	; continue.
+	mov	a, funct3
+	anl	a, #0x03
+	jz	exec_load_sign_extend_H
+
+	; Read the next two bytes of the 32-bit word.
+	inc	R3
+	lcall	sfr_byte_read
+	inc	R0
+	mov	@R0, a
+
+	inc	R3
+	lcall	sfr_byte_read
+	inc	R0
+	mov	@R0, a
+
+	; We just finished loading a 32-bit word, so we don't do sign
+	; extension. Just jump to the end.
+	sjmp	exec_load_done
+
 exec_load_ge_E0_hyp:
 	; Unimplemented--return zero for now.
 	mov	@R0, #0
@@ -414,6 +460,149 @@ exec_load_done:
 	pop	dpl
 	pop	dph
 
+	ret
+
+.macro	sfr_read_case	sfr_addr, ?branch
+	cjne	R3, #sfr_addr, branch
+	mov	a, sfr_addr
+	ret
+branch:
+.endm
+
+sfr_byte_read:
+	; The address to read from is stored in R3. The result is
+	; returned in A.
+	sfr_read_case	0x80
+	sfr_read_case	0x81
+	sfr_read_case	0x82
+	sfr_read_case	0x83
+	sfr_read_case	0x84
+	sfr_read_case	0x85
+	sfr_read_case	0x86
+	sfr_read_case	0x87
+	sfr_read_case	0x88
+	sfr_read_case	0x89
+	sfr_read_case	0x8A
+	sfr_read_case	0x8B
+	sfr_read_case	0x8C
+	sfr_read_case	0x8D
+	sfr_read_case	0x8E
+	sfr_read_case	0x8F
+	sfr_read_case	0x90
+	sfr_read_case	0x91
+	sfr_read_case	0x92
+	sfr_read_case	0x93
+	sfr_read_case	0x94
+	sfr_read_case	0x95
+	sfr_read_case	0x96
+	sfr_read_case	0x97
+	sfr_read_case	0x98
+	sfr_read_case	0x99
+	sfr_read_case	0x9A
+	sfr_read_case	0x9B
+	sfr_read_case	0x9C
+	sfr_read_case	0x9D
+	sfr_read_case	0x9E
+	sfr_read_case	0x9F
+	sfr_read_case	0xA0
+	sfr_read_case	0xA1
+	sfr_read_case	0xA2
+	sfr_read_case	0xA3
+	sfr_read_case	0xA4
+	sfr_read_case	0xA5
+	sfr_read_case	0xA6
+	sfr_read_case	0xA7
+	sfr_read_case	0xA8
+	sfr_read_case	0xA9
+	sfr_read_case	0xAA
+	sfr_read_case	0xAB
+	sfr_read_case	0xAC
+	sfr_read_case	0xAD
+	sfr_read_case	0xAE
+	sfr_read_case	0xAF
+	sfr_read_case	0xB0
+	sfr_read_case	0xB1
+	sfr_read_case	0xB2
+	sfr_read_case	0xB3
+	sfr_read_case	0xB4
+	sfr_read_case	0xB5
+	sfr_read_case	0xB6
+	sfr_read_case	0xB7
+	sfr_read_case	0xB8
+	sfr_read_case	0xB9
+	sfr_read_case	0xBA
+	sfr_read_case	0xBB
+	sfr_read_case	0xBC
+	sfr_read_case	0xBD
+	sfr_read_case	0xBE
+	sfr_read_case	0xBF
+	sfr_read_case	0xC0
+	sfr_read_case	0xC1
+	sfr_read_case	0xC2
+	sfr_read_case	0xC3
+	sfr_read_case	0xC4
+	sfr_read_case	0xC5
+	sfr_read_case	0xC6
+	sfr_read_case	0xC7
+	sfr_read_case	0xC8
+	sfr_read_case	0xC9
+	sfr_read_case	0xCA
+	sfr_read_case	0xCB
+	sfr_read_case	0xCC
+	sfr_read_case	0xCD
+	sfr_read_case	0xCE
+	sfr_read_case	0xCF
+	sfr_read_case	0xD0
+	sfr_read_case	0xD1
+	sfr_read_case	0xD2
+	sfr_read_case	0xD3
+	sfr_read_case	0xD4
+	sfr_read_case	0xD5
+	sfr_read_case	0xD6
+	sfr_read_case	0xD7
+	sfr_read_case	0xD8
+	sfr_read_case	0xD9
+	sfr_read_case	0xDA
+	sfr_read_case	0xDB
+	sfr_read_case	0xDC
+	sfr_read_case	0xDD
+	sfr_read_case	0xDE
+	sfr_read_case	0xDF
+	sfr_read_case	0xE0
+	sfr_read_case	0xE1
+	sfr_read_case	0xE2
+	sfr_read_case	0xE3
+	sfr_read_case	0xE4
+	sfr_read_case	0xE5
+	sfr_read_case	0xE6
+	sfr_read_case	0xE7
+	sfr_read_case	0xE8
+	sfr_read_case	0xE9
+	sfr_read_case	0xEA
+	sfr_read_case	0xEB
+	sfr_read_case	0xEC
+	sfr_read_case	0xED
+	sfr_read_case	0xEE
+	sfr_read_case	0xEF
+	sfr_read_case	0xF0
+	sfr_read_case	0xF1
+	sfr_read_case	0xF2
+	sfr_read_case	0xF3
+	sfr_read_case	0xF4
+	sfr_read_case	0xF5
+	sfr_read_case	0xF6
+	sfr_read_case	0xF7
+	sfr_read_case	0xF8
+	sfr_read_case	0xF9
+	sfr_read_case	0xFA
+	sfr_read_case	0xFB
+	sfr_read_case	0xFC
+	sfr_read_case	0xFD
+	sfr_read_case	0xFE
+	sfr_read_case	0xFF
+
+	; Default case.
+	mov	a, #0
 	ret
 
 exec_branch:
@@ -763,6 +952,40 @@ exec_store_lt_C0_code:
 	sjmp	.
 
 exec_store_lt_E0_sfr:
+	; We're always writing at least one byte.
+	mov	a, @R1
+	mov	R3, rs1_dat0
+	lcall	sfr_byte_write
+
+	; Jump to the end if we're done. Otherwise, continue.
+	mov	a, funct3
+	jz	exec_store_done
+	dec	funct3
+
+	; Write the next byte of the 16-bit word.
+	inc	R1
+	mov	a, @R1
+	inc	R3
+	lcall	sfr_byte_write
+
+	; Jump to the end if we're done. Otherwise, continue.
+	mov	a, funct3
+	jz	exec_store_done
+
+	; Write the next two bytes of the 32-bit word.
+	inc	R1
+	mov	a, @R1
+	inc	R3
+	lcall	sfr_byte_write
+
+	inc	R1
+	mov	a, @R1
+	inc	R3
+	lcall	sfr_byte_write
+
+	; We're definitely done writing now, so jump to the end.
+	sjmp	exec_store_done
+
 exec_store_ge_E0_hyp:
 	; Unimplemented--noop for now.
 
@@ -773,6 +996,147 @@ exec_store_done:
 	pop	dpl
 	pop	dph
 
+	ret
+
+.macro	sfr_write_case	sfr_addr, ?branch
+	cjne	R3, #sfr_addr, branch
+	mov	sfr_addr, a
+	ret
+branch:
+.endm
+
+sfr_byte_write:
+	; The address to write to is stored in R3. The data is stored in A.
+	sfr_write_case	0x80
+	;sfr_write_case	0x81  ; SP
+	;sfr_write_case	0x82  ; DPL
+	;sfr_write_case	0x83  ; DPH
+	sfr_write_case	0x84
+	sfr_write_case	0x85
+	sfr_write_case	0x86
+	sfr_write_case	0x87
+	sfr_write_case	0x88
+	sfr_write_case	0x89
+	sfr_write_case	0x8A
+	sfr_write_case	0x8B
+	sfr_write_case	0x8C
+	sfr_write_case	0x8D
+	sfr_write_case	0x8E
+	sfr_write_case	0x8F
+	sfr_write_case	0x90
+	sfr_write_case	0x91
+	sfr_write_case	0x92
+	sfr_write_case	0x93
+	sfr_write_case	0x94
+	sfr_write_case	0x95
+	sfr_write_case	0x96
+	sfr_write_case	0x97
+	sfr_write_case	0x98
+	sfr_write_case	0x99
+	sfr_write_case	0x9A
+	sfr_write_case	0x9B
+	sfr_write_case	0x9C
+	sfr_write_case	0x9D
+	sfr_write_case	0x9E
+	sfr_write_case	0x9F
+	sfr_write_case	0xA0
+	sfr_write_case	0xA1
+	sfr_write_case	0xA2
+	sfr_write_case	0xA3
+	sfr_write_case	0xA4
+	sfr_write_case	0xA5
+	sfr_write_case	0xA6
+	sfr_write_case	0xA7
+	sfr_write_case	0xA8
+	sfr_write_case	0xA9
+	sfr_write_case	0xAA
+	sfr_write_case	0xAB
+	sfr_write_case	0xAC
+	sfr_write_case	0xAD
+	sfr_write_case	0xAE
+	sfr_write_case	0xAF
+	sfr_write_case	0xB0
+	sfr_write_case	0xB1
+	sfr_write_case	0xB2
+	sfr_write_case	0xB3
+	sfr_write_case	0xB4
+	sfr_write_case	0xB5
+	sfr_write_case	0xB6
+	sfr_write_case	0xB7
+	sfr_write_case	0xB8
+	sfr_write_case	0xB9
+	sfr_write_case	0xBA
+	sfr_write_case	0xBB
+	sfr_write_case	0xBC
+	sfr_write_case	0xBD
+	sfr_write_case	0xBE
+	sfr_write_case	0xBF
+	sfr_write_case	0xC0
+	sfr_write_case	0xC1
+	sfr_write_case	0xC2
+	sfr_write_case	0xC3
+	sfr_write_case	0xC4
+	sfr_write_case	0xC5
+	sfr_write_case	0xC6
+	sfr_write_case	0xC7
+	sfr_write_case	0xC8
+	sfr_write_case	0xC9
+	sfr_write_case	0xCA
+	sfr_write_case	0xCB
+	sfr_write_case	0xCC
+	sfr_write_case	0xCD
+	sfr_write_case	0xCE
+	sfr_write_case	0xCF
+	;sfr_write_case	0xD0  ; PSW
+	sfr_write_case	0xD1
+	sfr_write_case	0xD2
+	sfr_write_case	0xD3
+	sfr_write_case	0xD4
+	sfr_write_case	0xD5
+	sfr_write_case	0xD6
+	sfr_write_case	0xD7
+	sfr_write_case	0xD8
+	sfr_write_case	0xD9
+	sfr_write_case	0xDA
+	sfr_write_case	0xDB
+	sfr_write_case	0xDC
+	sfr_write_case	0xDD
+	sfr_write_case	0xDE
+	sfr_write_case	0xDF
+	;sfr_write_case	0xE0  ; ACC (A)
+	sfr_write_case	0xE1
+	sfr_write_case	0xE2
+	sfr_write_case	0xE3
+	sfr_write_case	0xE4
+	sfr_write_case	0xE5
+	sfr_write_case	0xE6
+	sfr_write_case	0xE7
+	sfr_write_case	0xE8
+	sfr_write_case	0xE9
+	sfr_write_case	0xEA
+	sfr_write_case	0xEB
+	sfr_write_case	0xEC
+	sfr_write_case	0xED
+	sfr_write_case	0xEE
+	sfr_write_case	0xEF
+	;sfr_write_case	0xF0  ; B
+	sfr_write_case	0xF1
+	sfr_write_case	0xF2
+	sfr_write_case	0xF3
+	sfr_write_case	0xF4
+	sfr_write_case	0xF5
+	sfr_write_case	0xF6
+	sfr_write_case	0xF7
+	sfr_write_case	0xF8
+	sfr_write_case	0xF9
+	sfr_write_case	0xFA
+	sfr_write_case	0xFB
+	sfr_write_case	0xFC
+	sfr_write_case	0xFD
+	sfr_write_case	0xFE
+	sfr_write_case	0xFF
+
+	; Default case.
 	ret
 
 exec_op_imm:
