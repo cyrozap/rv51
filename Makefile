@@ -18,7 +18,10 @@ rv51.ihx: main.rel
 %.bin: %.ihx
 	$(OBJCOPY) -I ihex -O binary $< $@
 
+test: rv51.bin
+	./test-runner.py $<
+
 clean:
 	rm -f *.asm *.bin *.ihx *.lk *.lst *.map *.mem *.rel *.rst *.sym
 
-.PHONY: all clean
+.PHONY: all clean test
