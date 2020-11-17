@@ -3,6 +3,7 @@
 import argparse
 import os
 import pathlib
+import struct
 import subprocess
 import tempfile
 
@@ -73,13 +74,51 @@ class RiscvTestsTestRunner:
         subprocess.run(objcopy, check=True)
         combined_bin.close()
 
+        # Read the ELF file so we can extract the .data section from it.
+        test_binary_elf_path = test_runner_dir.joinpath("riscv-tests", "isa", "rv32ui-p-{}".format(test))
+        test_binary_elf = open(test_binary_elf_path, 'rb').read()
+
+        # Load the Section Header table information.
+        e_shoff = struct.unpack_from('<I', test_binary_elf, 0x20)[0]
+        e_shentsize = struct.unpack_from('<H', test_binary_elf, 0x2e)[0]
+        e_shnum = struct.unpack_from('<H', test_binary_elf, 0x30)[0]
+        e_shstrndx = struct.unpack_from('<H', test_binary_elf, 0x32)[0]
+
+        # Load the string table offset and size.
+        shstroff = e_shoff + e_shentsize * e_shstrndx
+        stroff = struct.unpack_from('<I', test_binary_elf, shstroff+16)[0]
+        strsize = struct.unpack_from('<I', test_binary_elf, shstroff+20)[0]
+
+        # Read the .data section from the ELF file.
+        data_section = b''
+        for i in range(0, e_shnum):
+            offset = e_shoff + e_shentsize * i
+            sh_name = struct.unpack_from('<I', test_binary_elf, offset)[0]
+            sh_offset = struct.unpack_from('<I', test_binary_elf, offset+16)[0]
+            sh_size = struct.unpack_from('<I', test_binary_elf, offset+20)[0]
+
+            name = test_binary_elf[stroff+sh_name:stroff+strsize].split(b'\0')[0]
+            if name == b'.data':
+                data_section = test_binary_elf[sh_offset:sh_offset+sh_size]
+                break
+
+        # If the .data section has data in it, generate a ucsim command file
+        # with a sequence of commands that will write the data into XDATA.
+        command_file_args = ""
+        if data_section:
+            command_file = tempfile.NamedTemporaryFile(prefix=name_prefix, suffix=".txt")
+            for addr in range(len(data_section)):
+                command_file.write("fill xram 0x{:04x} 0x{:04x} 0x{:02x}\n".format(addr, addr, data_section[addr]).encode('utf-8'))
+            command_file.flush()
+            command_file_args = "-C {}".format(command_file.name)
+
         # Make a FIFO for the serial output from the simulator.
         serial_fifo_dir = tempfile.TemporaryDirectory(prefix=name_prefix)
         serial_fifo_path = pathlib.PurePath(serial_fifo_dir.name, "serial_fifo")
         os.mkfifo(serial_fifo_path)
 
         # Start the simulator, writing serial output to the FIFO.
-        simulator = "s51 -t 8052 -X 78M -P -b -S out={} -G -e run {}".format(serial_fifo_path, combined_ihex.name).split()
+        simulator = "s51 -t 8052 -X 78M -P -b -S out={} {} -G {}".format(serial_fifo_path, command_file_args, combined_ihex.name).split()
         sim_proc = subprocess.Popen(simulator, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         # Open the FIFO *after* starting the simulator. Opening it before will
