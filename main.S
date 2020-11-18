@@ -463,7 +463,6 @@ exec_load_done:
 	ret
 
 .macro	sfr_read_case	sfr_addr, ?branch
-	cjne	R3, #sfr_addr, branch
 	mov	a, sfr_addr
 	ret
 branch:
@@ -471,7 +470,53 @@ branch:
 
 sfr_byte_read:
 	; The address to read from is stored in R3. The result is
-	; returned in A.
+	; returned in A. R7 is used as a scratch register.
+	mov	a, R3
+
+	; Rotate the address left by one, into the carry bit. This does
+	; three things:
+	;   1. It subtracts 0x80 from the address.
+	;   2. The address-offset-by-0x80 is multiplied by 2.
+	;   3. The carry bit is set if the address is >= 0x80, and
+	;      cleared otherwise.
+	clr	c
+	rlc	a
+	jc	sfr_read_addr_ge_0x80
+
+	; Address is < 0x80, so return zero.
+	mov	a, #0
+	ret
+
+sfr_read_addr_ge_0x80:
+	; Address is >= 0x80, and (address - 0x80) * 2 is in the A register.
+
+	; Rotate A right by one, dividing it by two so it is now
+	; (address - 0x80), and then store it in R7.
+	rr	a
+	mov	R7, a
+
+	; Rotate A left by one, multiplying it by two so it is once
+	; again (address - 0x80) * 2, then add R7 to it so it is now
+	; (address - 0x80) * 3, with the carry bit set to the high bit.
+	rl	a
+	add	a, R7
+
+	; If the carry bit isn't set, that means the address is < 0xD6.
+	jnc	sfr_read_addr_lt_0xD6
+
+	; If the carry bit is set, then the address is >= 0xD6.
+	; When the address is 0xD6, A is 2, so subtract two from the
+	; constant sfr_read_jump_table_hi to avoid having to subtract
+	; two from A. ((0xD6 - 0x80) * 3) & 0xFF == 2
+	mov	dptr, #(sfr_read_jump_table_hi - 2)
+	jmp	@a+dptr
+
+sfr_read_addr_lt_0xD6:
+	; Address is < 0xD6.
+	mov	dptr, #sfr_read_jump_table_lo
+	jmp	@a+dptr
+
+sfr_read_jump_table_lo:
 	sfr_read_case	0x80
 	sfr_read_case	0x81
 	sfr_read_case	0x82
@@ -558,6 +603,8 @@ sfr_byte_read:
 	sfr_read_case	0xD3
 	sfr_read_case	0xD4
 	sfr_read_case	0xD5
+
+sfr_read_jump_table_hi:
 	sfr_read_case	0xD6
 	sfr_read_case	0xD7
 	sfr_read_case	0xD8
@@ -600,10 +647,6 @@ sfr_byte_read:
 	sfr_read_case	0xFD
 	sfr_read_case	0xFE
 	sfr_read_case	0xFF
-
-	; Default case.
-	mov	a, #0
-	ret
 
 exec_branch:
 	; Skip extracting funct3--instead use the bits directly from the
