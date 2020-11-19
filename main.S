@@ -1040,19 +1040,71 @@ exec_store_done:
 
 	ret
 
-.macro	sfr_write_case	sfr_addr, ?branch
-	cjne	R3, #sfr_addr, branch
-	mov	sfr_addr, a
+.macro	sfr_write_case	sfr_addr
+	mov	sfr_addr, R4
 	ret
-branch:
+.endm
+
+.macro	sfr_write_case_disabled	sfr_addr
+	ret
+	.ds	2
 .endm
 
 sfr_byte_write:
-	; The address to write to is stored in R3. The data is stored in A.
+	; The address to write to is stored in R3. The data to write is
+	; stored in A, but we move it to R4. R7 is used as a scratch
+	; register.
+	mov	R4, a
+	mov	a, R3
+
+	; Rotate the address left by one, into the carry bit. This does
+	; three things:
+	;   1. It subtracts 0x80 from the address.
+	;   2. The address-offset-by-0x80 is multiplied by 2.
+	;   3. The carry bit is set if the address is >= 0x80, and
+	;      cleared otherwise.
+	clr	c
+	rlc	a
+	jc	sfr_write_addr_ge_0x80
+
+	; Address is < 0x80, so return zero.
+	mov	a, #0
+	ret
+
+sfr_write_addr_ge_0x80:
+	; Address is >= 0x80, and (address - 0x80) * 2 is in the A register.
+
+	; Rotate A right by one, dividing it by two so it is now
+	; (address - 0x80), and then store it in R7.
+	rr	a
+	mov	R7, a
+
+	; Rotate A left by one, multiplying it by two so it is once
+	; again (address - 0x80) * 2, then add R7 to it so it is now
+	; (address - 0x80) * 3, with the carry bit set to the high bit.
+	rl	a
+	add	a, R7
+
+	; If the carry bit isn't set, that means the address is < 0xD6.
+	jnc	sfr_write_addr_lt_0xD6
+
+	; If the carry bit is set, then the address is >= 0xD6.
+	; When the address is 0xD6, A is 2, so subtract two from the
+	; constant sfr_write_jump_table_hi to avoid having to subtract
+	; two from A. ((0xD6 - 0x80) * 3) & 0xFF == 2
+	mov	dptr, #(sfr_write_jump_table_hi - 2)
+	jmp	@a+dptr
+
+sfr_write_addr_lt_0xD6:
+	; Address is < 0xD6.
+	mov	dptr, #sfr_write_jump_table_lo
+	jmp	@a+dptr
+
+sfr_write_jump_table_lo:
 	sfr_write_case	0x80
-	;sfr_write_case	0x81  ; SP
-	;sfr_write_case	0x82  ; DPL
-	;sfr_write_case	0x83  ; DPH
+	sfr_write_case_disabled	0x81  ; SP
+	sfr_write_case_disabled	0x82  ; DPL
+	sfr_write_case_disabled	0x83  ; DPH
 	sfr_write_case	0x84
 	sfr_write_case	0x85
 	sfr_write_case	0x86
@@ -1129,12 +1181,14 @@ sfr_byte_write:
 	sfr_write_case	0xCD
 	sfr_write_case	0xCE
 	sfr_write_case	0xCF
-	;sfr_write_case	0xD0  ; PSW
+	sfr_write_case_disabled	0xD0  ; PSW
 	sfr_write_case	0xD1
 	sfr_write_case	0xD2
 	sfr_write_case	0xD3
 	sfr_write_case	0xD4
 	sfr_write_case	0xD5
+
+sfr_write_jump_table_hi:
 	sfr_write_case	0xD6
 	sfr_write_case	0xD7
 	sfr_write_case	0xD8
@@ -1145,7 +1199,7 @@ sfr_byte_write:
 	sfr_write_case	0xDD
 	sfr_write_case	0xDE
 	sfr_write_case	0xDF
-	;sfr_write_case	0xE0  ; ACC (A)
+	sfr_write_case_disabled	0xE0  ; ACC (A)
 	sfr_write_case	0xE1
 	sfr_write_case	0xE2
 	sfr_write_case	0xE3
@@ -1161,7 +1215,7 @@ sfr_byte_write:
 	sfr_write_case	0xED
 	sfr_write_case	0xEE
 	sfr_write_case	0xEF
-	;sfr_write_case	0xF0  ; B
+	sfr_write_case_disabled	0xF0  ; B
 	sfr_write_case	0xF1
 	sfr_write_case	0xF2
 	sfr_write_case	0xF3
@@ -1221,7 +1275,7 @@ exec_op_imm_jump_table:
 	ajmp	exec_xori  ; 4, XORI
 	ajmp	exec_srli_srai  ; 5, SRLI/SRAI
 	ajmp	exec_ori  ; 6, ORI
-	ajmp	exec_andi  ; 7, ANDI
+	ljmp	exec_andi  ; 7, ANDI
 
 	; No need for a default case as the value of A is already
 	; bit-limited and all cases are currently handled.
