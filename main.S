@@ -1666,6 +1666,10 @@ exec_op_0_0:
 	cjne	R7, #0x20, exec_op_0_1
 	ljmp	exec_sub
 exec_op_0_1:
+	cjne	R3, #0, exec_op_0_2  ; MUL
+	cjne	R7, #0x01, exec_op_0_2
+	ljmp	exec_mul
+exec_op_0_2:
 	cjne	R3, #1, exec_op_1  ; SLL
 	cjne	R7, #0x00, exec_op_1
 	ljmp	exec_sll
@@ -1778,6 +1782,124 @@ exec_sub:
 
 	mov	a, rs1_dat3
 	addc	a, rs2_dat3
+	mov	@R0, a
+
+	ret
+
+exec_mul:
+	; Load rs2 into rs2_dat[0-3].
+	mov	rs2_dat0, @R1
+	inc	R1
+	mov	rs2_dat1, @R1
+	inc	R1
+	mov	rs2_dat2, @R1
+	inc	R1
+	mov	rs2_dat3, @R1
+
+	; The below algorith is modified from SDCC's "_mullong.c", which
+	; is licensed under version 2 or later of the GNU General Public
+	; License.
+	; Copyright (C) 1999, Sandeep Dutta . sandeep.dutta@usa.net
+	; Copyright (C) 1999, Jean Louis VERN jlvern@writeme.com
+	;
+	; I'm not sure whether this code can really be covered by
+	; copyright, since the mathematical algorithm for multiplying
+	; two numbers of arbitrary length can't be copyrighted (since
+	; it's math) and the ISA of the 8051 is so limited there's
+	; essentially only one way to do implement that algorithm
+	; efficiently on this CPU. But the license is compatible with
+	; this project and re-using this code saved me a bit of time, so
+	; I might as well credit the authors even if I may not have to.
+
+				;	Byte 0
+	mov	a, rs1_dat0
+	mov	b, rs2_dat0
+	mul	ab		; rs1_dat0 * rs2_dat0
+	mov	rd_dat0, a
+	mov	rd_dat1, b
+
+				;	Byte 1
+	mov	a, rs1_dat1
+	mov	b, rs2_dat0
+	mul	ab		; rs1_dat1 * rs2_dat0
+	add	a, rd_dat1
+	mov	rd_dat1, a
+	clr	a
+	addc	a, b
+	mov	rd_dat2, a
+
+	mov	a, rs1_dat0
+	mov	b, rs2_dat1
+	mul	ab		; rs1_dat0 * rs2_dat1
+	add	a, rd_dat1
+	mov	rd_dat1, a
+	mov	a, b
+	addc	a, rd_dat2
+	mov	rd_dat2, a
+	clr	a
+	rlc	a
+	mov	rd_dat3, a
+
+				;	Byte 2
+	mov	a, rs1_dat2
+	mov	b, rs2_dat0
+	mul	ab		; rs1_dat2 * rs2_dat0
+	add	a, rd_dat2
+	mov	rd_dat2, a
+	mov	a, b
+	addc	a, rd_dat3
+	mov	rd_dat3, a
+
+	mov	a, rs1_dat1
+	mov	b, rs2_dat1
+	mul	ab		; rs1_dat1 * rs2_dat1
+	add	a, rd_dat2
+	mov	rd_dat2, a
+	mov	a, b
+	addc	a, rd_dat3
+	mov	rd_dat3, a
+
+	mov	a, rs1_dat0
+	mov	b, rs2_dat2
+	mul	ab		; rs1_dat0 * rs2_dat2
+	add	a, rd_dat2
+	mov	rd_dat2, a
+	mov	a, b
+	addc	a, rd_dat3
+	mov	rd_dat3, a
+
+				;	Byte 3
+	mov	a, rs1_dat3
+	mov	b, rs2_dat0
+	mul	ab		; rs1_dat3 * rs2_dat0
+	add	a, rd_dat3
+	mov	rd_dat3, a
+
+	mov	a, rs1_dat2
+	mov	b, rs2_dat1
+	mul	ab		; rs1_dat2 * rs2_dat1
+	add	a, rd_dat3
+	mov	rd_dat3, a
+
+	mov	a, rs1_dat1
+	mov	b, rs2_dat2
+	mul	ab		; rs1_dat1 * rs2_dat2
+	add	a, rd_dat3
+	mov	rd_dat3, a
+
+	mov	a, rs1_dat0
+	mov	b, rs2_dat3
+	mul	ab		; rs1_dat0 * rs2_dat3
+	add	a, rd_dat3
+	;mov	rd_dat3, a
+
+	; Store the result in the destination register.
+	mov	@R0, rd_dat0
+	inc	R0
+	mov	@R0, rd_dat1
+	inc	R0
+	mov	@R0, rd_dat2
+	inc	R0
 	mov	@R0, a
 
 	ret
