@@ -9,7 +9,8 @@ import tempfile
 
 
 INSTRUCTION_SETS = {
-    "RV32I Base Instruction Set": {
+    "I": {
+        "name": "RV32I Base Instruction Set",
         "prefix": "rv32ui",
         "tests": [
             "simple",
@@ -52,7 +53,8 @@ INSTRUCTION_SETS = {
             "and",
         ],
     },
-    "RV32M Standard Extension": {
+    "M": {
+        "name": "RV32M Standard Extension",
         "prefix": "rv32um",
         "tests": [
             "mul",
@@ -169,12 +171,19 @@ class RiscvTestsTestRunner:
 
 
 def main():
+    default_extensions = ','.join(INSTRUCTION_SETS.keys())
     parser = argparse.ArgumentParser()
+    parser.add_argument("-e", "--extensions", type=str, default=default_extensions, help="A comma-separated list of extensions to run tests for. Default: {}".format(default_extensions))
     parser.add_argument("emulator", type=str, help="RISC-V emulator binary compiled for 8051.")
     args = parser.parse_args()
 
+    extensions = args.extensions.split(',')
+
     runner = RiscvTestsTestRunner(args.emulator)
-    for (isa_name, isa) in INSTRUCTION_SETS.items():
+    for (isa_ext, isa) in INSTRUCTION_SETS.items():
+        if isa_ext not in extensions:
+            continue
+        isa_name = isa["name"]
         tests = isa["tests"]
         max_name_len = max(len(t) for t in tests)
         print("{}:".format(isa_name))
