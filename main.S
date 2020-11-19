@@ -1784,7 +1784,6 @@ exec_sub:
 
 exec_sll:
 	; Get the shift amount from the lower five bits of rs2.
-	lcall	set_src_to_rs2_iram_addr
 	mov	a, @R1
 	anl	a, #0x1F
 
@@ -1824,9 +1823,6 @@ exec_sll_shift_is_zero:
 
 exec_slt_sltu:
 	funct3_bit_0__set_if_unsigned_cleared_if_signed	= (((funct3 - 0x20) * 8) + 0)
-
-	; Load the second src address into R1.
-	lcall	set_src_to_rs2_iram_addr
 
 	; Load rs2 into rs2_dat[0-3].
 	mov	rs2_dat0, @R1
@@ -1964,7 +1960,6 @@ exec_xor:
 
 exec_srl_sra:
 	; Get the shift amount from the lower five bits of rs2.
-	lcall	set_src_to_rs2_iram_addr
 	mov	a, @R1
 	anl	a, #0x1F
 
