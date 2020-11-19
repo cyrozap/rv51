@@ -5,6 +5,7 @@ import os
 import pathlib
 import struct
 import subprocess
+import sys
 import tempfile
 
 
@@ -180,6 +181,8 @@ def main():
     extensions = args.extensions.split(',')
 
     runner = RiscvTestsTestRunner(args.emulator)
+
+    errors = 0
     for (isa_ext, isa) in INSTRUCTION_SETS.items():
         if isa_ext not in extensions:
             continue
@@ -191,10 +194,17 @@ def main():
             padding = '.' * (3 + max_name_len - len(test))
             error = runner.run_test(isa["prefix"], test)
             if error:
+                errors += 1
                 print("  {} {} FAIL - {}".format(test, padding, error))
             else:
                 print("  {} {} PASS".format(test, padding))
 
+    if errors:
+        print("Error: Failed {} tests.".format(errors))
+    else:
+        print("All tests passed!")
+
+    return errors
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
