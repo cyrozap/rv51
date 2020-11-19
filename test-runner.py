@@ -8,53 +8,58 @@ import subprocess
 import tempfile
 
 
-TESTS = [
-    "simple",
-    "lui",
-    "auipc",
-    "jal",
-    "jalr",
-    "beq",
-    "bne",
-    "blt",
-    "bge",
-    "bltu",
-    "bgeu",
-    "lb",
-    "lh",
-    "lw",
-    "lbu",
-    "lhu",
-    "sb",
-    "sh",
-    "sw",
-    "addi",
-    "slti",
-    "sltiu",
-    "xori",
-    "ori",
-    "andi",
-    "slli",
-    "srli",
-    "srai",
-    "add",
-    "sub",
-    "sll",
-    "slt",
-    "sltu",
-    "xor",
-    "srl",
-    "sra",
-    "or",
-    "and",
-]
+INSTRUCTION_SETS = {
+    "RV32I Base Instruction Set": {
+        "prefix": "rv32ui",
+        "tests": [
+            "simple",
+            "lui",
+            "auipc",
+            "jal",
+            "jalr",
+            "beq",
+            "bne",
+            "blt",
+            "bge",
+            "bltu",
+            "bgeu",
+            "lb",
+            "lh",
+            "lw",
+            "lbu",
+            "lhu",
+            "sb",
+            "sh",
+            "sw",
+            "addi",
+            "slti",
+            "sltiu",
+            "xori",
+            "ori",
+            "andi",
+            "slli",
+            "srli",
+            "srai",
+            "add",
+            "sub",
+            "sll",
+            "slt",
+            "sltu",
+            "xor",
+            "srl",
+            "sra",
+            "or",
+            "and",
+        ],
+    },
+}
 
 
 class RiscvTestsTestRunner:
     def __init__(self, rv_emulator):
         self.rv_emu = open(rv_emulator, 'rb').read()
 
-    def run_test(self, test):
+    def run_test(self, prefix, test):
         # Create the temporary files for the emulator + RISC-V code binary.
         name_prefix = "rv51-test-runner-{}-combined.".format(test)
         combined_bin = tempfile.NamedTemporaryFile(prefix=name_prefix, suffix=".bin")
@@ -62,7 +67,8 @@ class RiscvTestsTestRunner:
 
         # Combine the emulator and RISC-V test code into a single binary.
         test_runner_dir = pathlib.Path(__file__).parent
-        test_binary_name = "rv32ui-p-{}.bin".format(test)
+        test_name = "{}-p-{}".format(prefix, test)
+        test_binary_name = "{}.bin".format(test_name)
         test_binary_path = test_runner_dir.joinpath("riscv-tests", "isa", test_binary_name)
         test_binary = open(test_binary_path, 'rb').read()
         combined_bin.write(self.rv_emu)
@@ -75,7 +81,7 @@ class RiscvTestsTestRunner:
         combined_bin.close()
 
         # Read the ELF file so we can extract the .data section from it.
-        test_binary_elf_path = test_runner_dir.joinpath("riscv-tests", "isa", "rv32ui-p-{}".format(test))
+        test_binary_elf_path = test_runner_dir.joinpath("riscv-tests", "isa", test_name)
         test_binary_elf = open(test_binary_elf_path, 'rb').read()
 
         # Load the Section Header table information.
@@ -155,12 +161,17 @@ def main():
     args = parser.parse_args()
 
     runner = RiscvTestsTestRunner(args.emulator)
-    for test in TESTS:
-        error = runner.run_test(test)
-        if error:
-            print("{}: FAIL: {}".format(test, error))
-        else:
-            print("{}: PASS".format(test))
+    for (isa_name, isa) in INSTRUCTION_SETS.items():
+        tests = isa["tests"]
+        max_name_len = max(len(t) for t in tests)
+        print("{}:".format(isa_name))
+        for test in tests:
+            padding = '.' * (3 + max_name_len - len(test))
+            error = runner.run_test(isa["prefix"], test)
+            if error:
+                print("  {} {} FAIL - {}".format(test, padding, error))
+            else:
+                print("  {} {} PASS".format(test, padding))
 
 
 if __name__ == "__main__":
