@@ -1194,46 +1194,38 @@ exec_op_imm_rd_not_zero:
 	lcall	extract_funct3
 	lcall	extract_rs1
 	lcall	extract_imm_11_0
-	lcall	extract_funct7
 
 	; Load the dst and src addresses into R0 and R1, respectively.
 	lcall	set_dst_to_rd_iram_addr
 	lcall	set_src_to_rs1_iram_addr
 
-	; Compare funct3 and sometimes funct7.
-	mov	R3, funct3
-	mov	R7, funct7
+	; Calculate jump index. funct3 is already limited to 3 bits, so
+	; we don't need to worry about the rotate moving any high bits
+	; into the low bits.
+	mov	a, funct3
+	rl	a
 
-	cjne	R3, #0, exec_op_imm_0  ; ADDI
-	ljmp	exec_addi
-exec_op_imm_0:
-	cjne	R3, #1, exec_op_imm_1  ; SLLI
-	cjne	R7, #0, exec_op_imm_1
-	ljmp	exec_slli
-exec_op_imm_1:
-	cjne	R3, #2, exec_op_imm_2  ; SLTI
-	ljmp	exec_slti_sltiu
-exec_op_imm_2:
-	cjne	R3, #3, exec_op_imm_3  ; SLTIU
-	ljmp	exec_slti_sltiu
-exec_op_imm_3:
-	cjne	R3, #4, exec_op_imm_4  ; XORI
-	ljmp	exec_xori
-exec_op_imm_4:
-	cjne	R3, #5, exec_op_imm_5  ; SRLI/SRAI
-	mov	a, R7
-	anl	a, #0xDF
-	cjne	a, #0, exec_op_imm_5
-	ljmp	exec_srli_srai
-exec_op_imm_5:
-	cjne	R3, #6, exec_op_imm_6  ; ORI
-	ljmp	exec_ori
-exec_op_imm_6:
-	cjne	R3, #7, exec_op_imm_7  ; ANDI
-	ljmp	exec_andi
-exec_op_imm_7:
-	; Unrecognized instruction or execution function didn't "ret".
-	sjmp	.
+	; Save dptr. Each execution function will need to restore dptr
+	; since they don't return to this function.
+	push	dph
+	push	dpl
+
+	; Jump into the jump table.
+	mov	dptr, #exec_op_imm_jump_table
+	jmp	@a+dptr
+
+exec_op_imm_jump_table:
+	ajmp	exec_addi  ; 0, ADDI
+	ajmp	exec_slli  ; 1, SLLI
+	ajmp	exec_slti_sltiu  ; 2, SLTI
+	ajmp	exec_slti_sltiu  ; 3, SLTIU
+	ajmp	exec_xori  ; 4, XORI
+	ajmp	exec_srli_srai  ; 5, SRLI/SRAI
+	ajmp	exec_ori  ; 6, ORI
+	ajmp	exec_andi  ; 7, ANDI
+
+	; No need for a default case as the value of A is already
+	; bit-limited and all cases are currently handled.
 
 exec_addi:
 	; For each byte in the source and destination registers, ADD the
@@ -1261,6 +1253,8 @@ exec_addi:
 	addc	a, immediate_3
 	mov	@R0, a
 
+	pop	dpl
+	pop	dph
 	ret
 
 exec_slli:
@@ -1304,6 +1298,8 @@ exec_slli_shift_is_zero:
 	inc	R0
 	mov	@R0, rs1_dat3
 
+	pop	dpl
+	pop	dph
 	ret
 
 exec_slti_sltiu:
@@ -1407,6 +1403,8 @@ slti_sltiu_final:
 	inc	R0
 	mov	@R0, #0
 
+	pop	dpl
+	pop	dph
 	ret
 
 exec_xori:
@@ -1435,6 +1433,8 @@ exec_xori:
 	xrl	a, immediate_3
 	mov	@R0, a
 
+	pop	dpl
+	pop	dph
 	ret
 
 exec_srli_srai:
@@ -1454,7 +1454,7 @@ exec_srli_srai:
 	anl	a, #0x1F
 	jz	exec_srli_srai_done
 
-	jb	(((funct7 - 0x20) * 8) + 5), exec_srli_srai_arith
+	jb	(((instruction_0 - 0x20) * 8) + 30), exec_srli_srai_arith
 
 exec_srli_srai_loop:
 	clr	c
@@ -1507,6 +1507,8 @@ exec_srli_srai_done:
 	inc	R0
 	mov	@R0, rs1_dat3
 
+	pop	dpl
+	pop	dph
 	ret
 
 exec_ori:
@@ -1535,6 +1537,8 @@ exec_ori:
 	orl	a, immediate_3
 	mov	@R0, a
 
+	pop	dpl
+	pop	dph
 	ret
 
 exec_andi:
@@ -1563,6 +1567,8 @@ exec_andi:
 	anl	a, immediate_3
 	mov	@R0, a
 
+	pop	dpl
+	pop	dph
 	ret
 
 exec_op:
