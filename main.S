@@ -462,10 +462,9 @@ exec_load_done:
 
 	ret
 
-.macro	sfr_read_case	sfr_addr, ?branch
+.macro	sfr_read_case	sfr_addr
 	mov	a, sfr_addr
 	ret
-branch:
 .endm
 
 sfr_byte_read:
