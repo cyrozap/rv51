@@ -52,6 +52,19 @@ INSTRUCTION_SETS = {
             "and",
         ],
     },
+    "RV32M Standard Extension": {
+        "prefix": "rv32um",
+        "tests": [
+            "mul",
+            "mulh",
+            "mulhsu",
+            "mulhu",
+            "div",
+            "divu",
+            "rem",
+            "remu",
+        ],
+    },
 }
 
 
