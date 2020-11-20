@@ -2598,5 +2598,18 @@ fetch_instruction:
 	inc	dptr
 	ret
 
+emulator_size:
+	; The size of the emulator, in bytes, as a little-endian 32-bit
+	; unsigned integer. In the RISC-V's memory map, this value will
+	; appear at address 0x8000FFFC (0x80010000 - 4) and repeat every
+	; 0x10000 bytes. For the greatest compatibility, however, it's
+	; probably best to access this value at 0xBFFFFFFC
+	; (0xC0000000 - 4), since that will work even once support for
+	; 24-bit address spaces is added.
+	.db	rv_code
+	.db	(rv_code >> 8)
+	.db	0
+	.db	0
+
 rv_code:
 	; This label points to the start of the RISC-V code.
