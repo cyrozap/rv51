@@ -2599,3 +2599,4 @@ fetch_instruction:
 	ret
 
 rv_code:
+	; This label points to the start of the RISC-V code.
