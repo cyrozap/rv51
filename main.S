@@ -1947,13 +1947,6 @@ exec_sll_shift_is_zero:
 	ret
 
 exec_mulhu:
-	; MULH[[S]U] has no immediate, so use the immediate space to
-	; store the upper 32 bits of the result.
-	rd_dat4	= immediate_0
-	rd_dat5	= immediate_1
-	rd_dat6	= immediate_2
-	rd_dat7	= immediate_3
-
 	; Load rs2 into rs2_dat[0-3].
 	mov	rs2_dat0, @R1
 	inc	R1
@@ -1962,6 +1955,27 @@ exec_mulhu:
 	mov	rs2_dat2, @R1
 	inc	R1
 	mov	rs2_dat3, @R1
+
+	lcall	exec_mulh_common
+
+	; Store the result in the destination register.
+	mov	@R0, rd_dat4
+	inc	R0
+	mov	@R0, rd_dat5
+	inc	R0
+	mov	@R0, rd_dat6
+	inc	R0
+	mov	@R0, rd_dat7
+
+	ret
+
+exec_mulh_common:
+	; MULH[[S]U] has no immediate, so use the immediate space to
+	; store the upper 32 bits of the result.
+	rd_dat4	= immediate_0
+	rd_dat5	= immediate_1
+	rd_dat6	= immediate_2
+	rd_dat7	= immediate_3
 
 	; On the 8051, there's... basically no good way to do 32-bit by
 	; 32-bit multiplication, where the result is stored as the full
@@ -2212,15 +2226,6 @@ exec_mulhu:
 	mov	a, b
 	addc	a, rd_dat7
 	mov	rd_dat7, a
-
-	; Store the result in the destination register.
-	mov	@R0, rd_dat4
-	inc	R0
-	mov	@R0, rd_dat5
-	inc	R0
-	mov	@R0, rd_dat6
-	inc	R0
-	mov	@R0, rd_dat7
 
 	ret
 
