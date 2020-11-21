@@ -1674,10 +1674,18 @@ exec_op_0_2:
 	cjne	R7, #0x00, exec_op_1
 	ljmp	exec_sll
 exec_op_1:
+	cjne	R3, #1, exec_op_1_1  ; MULH
+	cjne	R7, #0x01, exec_op_1_1
+	ljmp	exec_mulh
+exec_op_1_1:
 	cjne	R3, #2, exec_op_2  ; SLT
 	cjne	R7, #0x00, exec_op_2
 	ljmp	exec_slt_sltu
 exec_op_2:
+	cjne	R3, #2, exec_op_2_1  ; MULHSU
+	cjne	R7, #0x01, exec_op_2_1
+	ljmp	exec_mulhsu
+exec_op_2_1:
 	cjne	R3, #3, exec_op_3  ; SLTU
 	cjne	R7, #0x00, exec_op_3
 	ljmp	exec_slt_sltu
@@ -1943,6 +1951,254 @@ exec_sll_shift_is_zero:
 	mov	@R0, rs1_dat2
 	inc	R0
 	mov	@R0, rs1_dat3
+
+	ret
+
+exec_mulh:
+	; Check each operand to see if it's negative. If it is,
+	; perform the two's complement on it and note the sign.
+
+	; Set the sign flags to zero.
+	mov	R6, #0
+	mov	R7, #0
+
+	; First, check the sign of rs1, skipping the negation if it's
+	; positive.
+	mov	a, rs1_dat3
+	jnb	ACC.7, 1$
+
+	; Note that rs1 is negative.
+	inc	R6
+
+	; Perform the two's complement on rs1.
+	mov	a, rs1_dat0
+	xrl	a, #0xFF
+	add	a, #1
+	mov	rs1_dat0, a
+	mov	a, rs1_dat1
+	xrl	a, #0xFF
+	addc	a, #0
+	mov	rs1_dat1, a
+	mov	a, rs1_dat2
+	xrl	a, #0xFF
+	addc	a, #0
+	mov	rs1_dat2, a
+	mov	a, rs1_dat3
+	xrl	a, #0xFF
+	addc	a, #0
+	mov	rs1_dat3, a
+
+1$:
+	; Grab the last byte of rs2 to check if it's negative.
+	aR2	= 2
+	mov	a, R1
+	mov	R2, a
+	add	a, #3
+	mov	R1, a
+	mov	a, @R1
+	mov	R1, aR2
+
+	; Check the sign of rs2, skipping the negation if it's positive.
+	jnb	ACC.7, 2$
+
+	; Note that rs2 is negative.
+	inc	R7
+
+	; Load rs2 into rs2_dat[0-3], simultaneously performing the
+	; two's complement on it.
+	mov	a, @R1
+	xrl	a, #0xFF
+	add	a, #1
+	mov	rs2_dat0, a
+	inc	R1
+	mov	a, @R1
+	xrl	a, #0xFF
+	addc	a, #0
+	mov	rs2_dat1, a
+	inc	R1
+	mov	a, @R1
+	xrl	a, #0xFF
+	addc	a, #0
+	mov	rs2_dat2, a
+	inc	R1
+	mov	a, @R1
+	xrl	a, #0xFF
+	addc	a, #0
+	mov	rs2_dat3, a
+
+	sjmp	3$
+
+2$:
+	; Load rs2 into rs2_dat[0-3].
+	mov	rs2_dat0, @R1
+	inc	R1
+	mov	rs2_dat1, @R1
+	inc	R1
+	mov	rs2_dat2, @R1
+	inc	R1
+	mov	rs2_dat3, @R1
+
+3$:
+	lcall	exec_mulh_common
+
+	; Check if we need to negate the result by checking the sign
+	; variables we set previously. If they're different, negate the
+	; result.
+	mov	a, R6
+	xrl	a, R7
+	jz	4$
+
+	; The result is negative, so we need to negate it before storing
+	; it in the destination register. We need to perform the
+	; negation on the whole 64-bit result, since it won't work
+	; otherwise.
+	mov	a, rd_dat0
+	xrl	a, #0xFF
+	add	a, #1
+	mov	a, rd_dat1
+	xrl	a, #0xFF
+	addc	a, #0
+	mov	a, rd_dat2
+	xrl	a, #0xFF
+	addc	a, #0
+	mov	a, rd_dat3
+	xrl	a, #0xFF
+	addc	a, #0
+
+	mov	a, rd_dat4
+	xrl	a, #0xFF
+	addc	a, #0
+	mov	@R0, a
+	inc	R0
+	mov	a, rd_dat5
+	xrl	a, #0xFF
+	addc	a, #0
+	mov	@R0, a
+	inc	R0
+	mov	a, rd_dat6
+	xrl	a, #0xFF
+	addc	a, #0
+	mov	@R0, a
+	inc	R0
+	mov	a, rd_dat7
+	xrl	a, #0xFF
+	addc	a, #0
+	mov	@R0, a
+
+	ret
+
+4$:
+	; The result is positive, so just store it in the destination
+	; register.
+	mov	@R0, rd_dat4
+	inc	R0
+	mov	@R0, rd_dat5
+	inc	R0
+	mov	@R0, rd_dat6
+	inc	R0
+	mov	@R0, rd_dat7
+
+	ret
+
+exec_mulhsu:
+	; Check rs1 to see if it's negative. If it is, perform the two's
+	; complement on it and note the sign.
+
+	; Set the sign flag to zero.
+	mov	R6, #0
+
+	; First, check the sign of rs1, skipping the negation if it's
+	; positive.
+	mov	a, rs1_dat3
+	jnb	ACC.7, 1$
+
+	; Note that rs1 is negative.
+	inc	R6
+
+	; Perform the two's complement on rs1.
+	mov	a, rs1_dat0
+	xrl	a, #0xFF
+	add	a, #1
+	mov	rs1_dat0, a
+	mov	a, rs1_dat1
+	xrl	a, #0xFF
+	addc	a, #0
+	mov	rs1_dat1, a
+	mov	a, rs1_dat2
+	xrl	a, #0xFF
+	addc	a, #0
+	mov	rs1_dat2, a
+	mov	a, rs1_dat3
+	xrl	a, #0xFF
+	addc	a, #0
+	mov	rs1_dat3, a
+
+1$:
+	; Load rs2 into rs2_dat[0-3].
+	mov	rs2_dat0, @R1
+	inc	R1
+	mov	rs2_dat1, @R1
+	inc	R1
+	mov	rs2_dat2, @R1
+	inc	R1
+	mov	rs2_dat3, @R1
+
+	lcall	exec_mulh_common
+
+	; Check if we need to negate the result by checking the sign
+	; variable we set previously. If it's set, negate the result.
+	mov	a, R6
+	jz	2$
+
+	; The result is negative, so we need to negate it before storing
+	; it in the destination register. We need to perform the
+	; negation on the whole 64-bit result, since it won't work
+	; otherwise.
+	mov	a, rd_dat0
+	xrl	a, #0xFF
+	add	a, #1
+	mov	a, rd_dat1
+	xrl	a, #0xFF
+	addc	a, #0
+	mov	a, rd_dat2
+	xrl	a, #0xFF
+	addc	a, #0
+	mov	a, rd_dat3
+	xrl	a, #0xFF
+	addc	a, #0
+
+	mov	a, rd_dat4
+	xrl	a, #0xFF
+	addc	a, #0
+	mov	@R0, a
+	inc	R0
+	mov	a, rd_dat5
+	xrl	a, #0xFF
+	addc	a, #0
+	mov	@R0, a
+	inc	R0
+	mov	a, rd_dat6
+	xrl	a, #0xFF
+	addc	a, #0
+	mov	@R0, a
+	inc	R0
+	mov	a, rd_dat7
+	xrl	a, #0xFF
+	addc	a, #0
+	mov	@R0, a
+
+	ret
+
+2$:
+	; The result is positive, so just store it in the destination
+	; register.
+	mov	@R0, rd_dat4
+	inc	R0
+	mov	@R0, rd_dat5
+	inc	R0
+	mov	@R0, rd_dat6
+	inc	R0
+	mov	@R0, rd_dat7
 
 	ret
 

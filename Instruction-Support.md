@@ -48,8 +48,8 @@
 ## RV32M Standard Extension
 
 - [x] MUL
-- [ ] MULH
-- [ ] MULHSU
+- [x] MULH
+- [x] MULHSU
 - [x] MULHU
 - [ ] DIV
 - [ ] DIVU
