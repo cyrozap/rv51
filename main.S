@@ -145,7 +145,7 @@ decode_8:
 	ret
 decode_9:
 	cjne	R2, #0x73, decode_10  ; SYSTEM
-	jb	(((instruction_0 - 0x20) * 8) + 12), exec_ebreak
+	jb	(((instruction_0 - 0x20) * 8) + 20), exec_ebreak
 	ljmp	exec_ecall
 exec_ebreak:
 	; EBREAK is a no-op, but with an explicit "nop" instruction so
