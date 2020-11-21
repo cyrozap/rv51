@@ -1766,7 +1766,6 @@ exec_sub:
 	xrl	a, #0xFF
 	addc	a, #0
 	mov	rs2_dat3, a
-	inc	R1
 
 	; Now, add the first operand to the negated operand.
 	mov	a, rs1_dat0
