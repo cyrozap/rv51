@@ -1682,6 +1682,10 @@ exec_op_2:
 	cjne	R7, #0x00, exec_op_3
 	ljmp	exec_slt_sltu
 exec_op_3:
+	cjne	R3, #3, exec_op_3_1  ; MULHU
+	cjne	R7, #0x01, exec_op_3_1
+	ljmp	exec_mulhu
+exec_op_3_1:
 	cjne	R3, #4, exec_op_4  ; XOR
 	cjne	R7, #0x00, exec_op_4
 	ljmp	exec_xor
@@ -1940,6 +1944,284 @@ exec_sll_shift_is_zero:
 	mov	@R0, rs1_dat2
 	inc	R0
 	mov	@R0, rs1_dat3
+
+	ret
+
+exec_mulhu:
+	; MULH[[S]U] has no immediate, so use the immediate space to
+	; store the upper 32 bits of the result.
+	rd_dat4	= immediate_0
+	rd_dat5	= immediate_1
+	rd_dat6	= immediate_2
+	rd_dat7	= immediate_3
+
+	; Load rs2 into rs2_dat[0-3].
+	mov	rs2_dat0, @R1
+	inc	R1
+	mov	rs2_dat1, @R1
+	inc	R1
+	mov	rs2_dat2, @R1
+	inc	R1
+	mov	rs2_dat3, @R1
+
+	; On the 8051, there's... basically no good way to do 32-bit by
+	; 32-bit multiplication, where the result is stored as the full
+	; 64-bits. It's extra tricky because you need to propagate the
+	; carries for many more bytes than for the regular MUL
+	; instruction.
+	;
+	; This is the algorithm I came up with after visualizing the
+	; process in a spreadsheet.
+
+	; Round 0, rs1_dat0.
+	mov	a, rs1_dat0
+	mov	b, rs2_dat0
+	mul	ab
+	mov	rd_dat0, a
+	mov	rd_dat1, b
+
+	mov     a, rs1_dat0
+	mov	b, rs2_dat1
+	mul	ab
+	add	a, rd_dat1
+	mov	rd_dat1, a
+	clr	a
+	addc	a, b
+	mov	rd_dat2, a
+	clr	a
+	rlc	a
+	mov	rd_dat3, a
+
+	mov     a, rs1_dat0
+	mov	b, rs2_dat2
+	mul	ab
+	add	a, rd_dat2
+	mov	rd_dat2, a
+	mov	a, b
+	addc	a, rd_dat3
+	mov	rd_dat3, a
+	clr	a
+	rlc	a
+	mov	rd_dat4, a
+
+	mov     a, rs1_dat0
+	mov	b, rs2_dat3
+	mul	ab
+	add	a, rd_dat3
+	mov	rd_dat3, a
+	mov	a, b
+	addc	a, rd_dat4
+	mov	rd_dat4, a
+	clr	a
+	rlc	a
+	mov	rd_dat5, a
+
+	; Round 1, rs1_dat1.
+	mov     a, rs1_dat1
+	mov	b, rs2_dat0
+	mul	ab
+	add	a, rd_dat1
+	mov	rd_dat1, a
+	mov	a, b
+	addc	a, rd_dat2
+	mov	rd_dat2, a
+	clr	a
+	addc	a, rd_dat3
+	mov	rd_dat3, a
+	clr	a
+	addc	a, rd_dat4
+	mov	rd_dat4, a
+	clr	a
+	addc	a, rd_dat5
+	mov	rd_dat5, a
+	clr	a
+	rlc	a
+	mov	rd_dat6, a
+
+	mov     a, rs1_dat1
+	mov	b, rs2_dat1
+	mul	ab
+	add	a, rd_dat2
+	mov	rd_dat2, a
+	mov	a, b
+	addc	a, rd_dat3
+	mov	rd_dat3, a
+	clr	a
+	addc	a, rd_dat4
+	mov	rd_dat4, a
+	clr	a
+	addc	a, rd_dat5
+	mov	rd_dat5, a
+	clr	a
+	addc	a, rd_dat6
+	mov	rd_dat6, a
+	clr	a
+	rlc	a
+	mov	rd_dat7, a
+
+	mov     a, rs1_dat1
+	mov	b, rs2_dat2
+	mul	ab
+	add	a, rd_dat3
+	mov	rd_dat3, a
+	mov	a, b
+	addc	a, rd_dat4
+	mov	rd_dat4, a
+	clr	a
+	addc	a, rd_dat5
+	mov	rd_dat5, a
+	clr	a
+	addc	a, rd_dat6
+	mov	rd_dat6, a
+	clr	a
+	addc	a, rd_dat7
+	mov	rd_dat7, a
+
+	mov     a, rs1_dat1
+	mov	b, rs2_dat3
+	mul	ab
+	add	a, rd_dat4
+	mov	rd_dat4, a
+	mov	a, b
+	addc	a, rd_dat5
+	mov	rd_dat5, a
+	clr	a
+	addc	a, rd_dat6
+	mov	rd_dat6, a
+	clr	a
+	addc	a, rd_dat7
+	mov	rd_dat7, a
+
+	; Round 2, rs1_dat2.
+	mov     a, rs1_dat2
+	mov	b, rs2_dat0
+	mul	ab
+	add	a, rd_dat2
+	mov	rd_dat2, a
+	mov	a, b
+	addc	a, rd_dat3
+	mov	rd_dat3, a
+	clr	a
+	addc	a, rd_dat4
+	mov	rd_dat4, a
+	clr	a
+	addc	a, rd_dat5
+	mov	rd_dat5, a
+	clr	a
+	addc	a, rd_dat6
+	mov	rd_dat6, a
+	clr	a
+	addc	a, rd_dat7
+	mov	rd_dat7, a
+
+	mov     a, rs1_dat2
+	mov	b, rs2_dat1
+	mul	ab
+	add	a, rd_dat3
+	mov	rd_dat3, a
+	mov	a, b
+	addc	a, rd_dat4
+	mov	rd_dat4, a
+	clr	a
+	addc	a, rd_dat5
+	mov	rd_dat5, a
+	clr	a
+	addc	a, rd_dat6
+	mov	rd_dat6, a
+	clr	a
+	addc	a, rd_dat7
+	mov	rd_dat7, a
+
+	mov     a, rs1_dat2
+	mov	b, rs2_dat2
+	mul	ab
+	add	a, rd_dat4
+	mov	rd_dat4, a
+	mov	a, b
+	addc	a, rd_dat5
+	mov	rd_dat5, a
+	clr	a
+	addc	a, rd_dat6
+	mov	rd_dat6, a
+	clr	a
+	addc	a, rd_dat7
+	mov	rd_dat7, a
+
+	mov     a, rs1_dat2
+	mov	b, rs2_dat3
+	mul	ab
+	add	a, rd_dat5
+	mov	rd_dat5, a
+	mov	a, b
+	addc	a, rd_dat6
+	mov	rd_dat6, a
+	clr	a
+	addc	a, rd_dat7
+	mov	rd_dat7, a
+
+	; Round 3, rs1_dat3.
+	mov     a, rs1_dat3
+	mov	b, rs2_dat0
+	mul	ab
+	add	a, rd_dat3
+	mov	rd_dat3, a
+	mov	a, b
+	addc	a, rd_dat4
+	mov	rd_dat4, a
+	clr	a
+	addc	a, rd_dat5
+	mov	rd_dat5, a
+	clr	a
+	addc	a, rd_dat6
+	mov	rd_dat6, a
+	clr	a
+	addc	a, rd_dat7
+	mov	rd_dat7, a
+
+	mov     a, rs1_dat3
+	mov	b, rs2_dat1
+	mul	ab
+	add	a, rd_dat4
+	mov	rd_dat4, a
+	mov	a, b
+	addc	a, rd_dat5
+	mov	rd_dat5, a
+	clr	a
+	addc	a, rd_dat6
+	mov	rd_dat6, a
+	clr	a
+	addc	a, rd_dat7
+	mov	rd_dat7, a
+
+	mov     a, rs1_dat3
+	mov	b, rs2_dat2
+	mul	ab
+	add	a, rd_dat5
+	mov	rd_dat5, a
+	mov	a, b
+	addc	a, rd_dat6
+	mov	rd_dat6, a
+	clr	a
+	addc	a, rd_dat7
+	mov	rd_dat7, a
+
+	mov     a, rs1_dat3
+	mov	b, rs2_dat3
+	mul	ab
+	add	a, rd_dat6
+	mov	rd_dat6, a
+	mov	a, b
+	addc	a, rd_dat7
+	mov	rd_dat7, a
+
+	; Store the result in the destination register.
+	mov	@R0, rd_dat4
+	inc	R0
+	mov	@R0, rd_dat5
+	inc	R0
+	mov	@R0, rd_dat6
+	inc	R0
+	mov	@R0, rd_dat7
 
 	ret
 

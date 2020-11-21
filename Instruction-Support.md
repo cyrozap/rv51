@@ -50,7 +50,7 @@
 - [x] MUL
 - [ ] MULH
 - [ ] MULHSU
-- [ ] MULHU
+- [x] MULHU
 - [ ] DIV
 - [ ] DIVU
 - [ ] REM
