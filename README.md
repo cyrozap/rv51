@@ -93,7 +93,7 @@ much memory and the hardware doesn't have floating point support.
 All 40 instructions of the RV32I Base Instruction Set have been implemented.
 You can see instruction support status in [Instruction Support][isa-support].
 
-Interrupts are not yet supported.
+Interrupts are not yet supported, nor is the rest of machine-mode (M-mode).
 
 
 ## What's the license?
