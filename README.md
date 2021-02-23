@@ -108,6 +108,6 @@ later][gpl].
 [llvm]: https://llvm.org/
 [rust]: https://www.rust-lang.org/
 [risc-v]: https://riscv.org/
-[vmu]: http://dmitry.gr/?r=05.Projects&proj=25.%20VMU%20Hacking
+[vmu]: https://dmitry.gr/?r=05.Projects&proj=25.%20VMU%20Hacking
 [isa-support]: Instruction-Support.md
 [gpl]: https://www.gnu.org/licenses/gpl-3.0.en.html
