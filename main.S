@@ -31,7 +31,8 @@
 ;   R0.
 ; - Only the "set_src_to_rs1_iram_addr" and "set_src_to_rs2_iram_addr"
 ;   functions can modify R1.
-; - Only the "rv_calc_next_pc" function can modify rv_pc_[0-1].
+; - Only the "rv_calc_pc" and "rv_calc_next_pc" functions can modify
+;   rv_pc_[0-1].
 
 rv_ram_base = 0x00000000
 rv_rom_base = 0x80000000
@@ -66,6 +67,8 @@ rs2_dat2	= 0x3A
 rs2_dat3	= 0x3B
 rv_pc_0	= 0x3C
 rv_pc_1	= 0x3D
+curr_pc_dptr_0	= 0x3E
+curr_pc_dptr_1	= 0x3F
 rv_x0	= 0x80
 
 	.area	XSEG	(XDATA)
@@ -878,21 +881,11 @@ exec_jal:
 
 exec_jal_rd_zero:
 jump_to_current_PC_plus_immediate:
-	; Subtract 4 from the dptr, since it's currently pointing to the
-	; next instruction and we need it to be pointing to the current
-	; instruction
-	mov	a, dpl
-	add	a, #-4
-	mov	dpl, a
-	mov	a, dph
-	addc	a, #-1
-	mov	dph, a
-
-	; Add the immediate to dptr, the "real" PC.
-	mov	a, dpl
+	; Add the immediate to the saved current PC.
+	mov	a, curr_pc_dptr_0
 	add	a, immediate_0
 	mov	dpl, a
-	mov	a, dph
+	mov	a, curr_pc_dptr_1
 	addc	a, immediate_1
 	mov	dph, a
 
@@ -2756,17 +2749,7 @@ exec_auipc:
 
 exec_auipc_rd_not_zero:
 	lcall	extract_imm_31_12
-	lcall	rv_calc_next_pc
-
-	; Subtract 4 from the calculated PC, since it's currently
-	; pointing to the next instruction and we need it to be pointing
-	; to the current instruction.
-	mov	a, rv_pc_0
-	add	a, #-4
-	mov	rv_pc_0, a
-	mov	a, rv_pc_1
-	addc	a, #-1
-	mov	rv_pc_1, a
+	lcall	rv_calc_curr_pc
 
 	; Write the immediate directly to rd.
 	lcall	set_dst_to_rd_iram_addr
@@ -2856,6 +2839,16 @@ set_src_to_rsN_iram_addr:
 	; Set the source address to the final register offset.
 	mov	R1, a
 
+	ret
+
+rv_calc_curr_pc:
+	mov	a, curr_pc_dptr_0
+	clr	c
+	subb	a, #(rv_code)
+	mov	rv_pc_0, a
+	mov	a, curr_pc_dptr_1
+	subb	a, #(rv_code >> 8)
+	mov	rv_pc_1, a
 	ret
 
 rv_calc_next_pc:
@@ -3122,6 +3115,8 @@ extract_rd:
 	ret
 
 fetch_instruction:
+	mov	curr_pc_dptr_0, dpl
+	mov	curr_pc_dptr_1, dph
 	clr	a
 	movc	a, @a+dptr
 	mov	instruction_0, a
