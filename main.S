@@ -31,8 +31,8 @@
 ;   R0.
 ; - Only the "set_src_to_rs1_iram_addr" and "set_src_to_rs2_iram_addr"
 ;   functions can modify R1.
-; - Only the "rv_calc_pc" and "rv_calc_next_pc" functions can modify
-;   rv_pc_[0-1].
+; - Only the "rv_calc_curr_pc" and "rv_calc_next_pc" functions can
+;   modify rv_pc_[0-1].
 
 rv_ram_base = 0x00000000
 rv_rom_base = 0x80000000
