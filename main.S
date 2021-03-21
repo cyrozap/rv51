@@ -1,6 +1,6 @@
 ;------------------------------------------------------------------------;
 ; rv51 - A RISC-V emulator for the 8051 microcontroller.                 ;
-; Copyright (C) 2020  Forest Crossman <cyrozap@gmail.com>                ;
+; Copyright (C) 2020-2021  Forest Crossman <cyrozap@gmail.com>           ;
 ;                                                                        ;
 ; This program is free software: you can redistribute it and/or modify   ;
 ; it under the terms of the GNU General Public License as published by   ;
@@ -31,7 +31,7 @@
 ;   R0.
 ; - Only the "set_src_to_rs1_iram_addr" and "set_src_to_rs2_iram_addr"
 ;   functions can modify R1.
-; - Only the "rv_calc_pc" function can modify rv_pc_[0-1].
+; - Only the "rv_calc_next_pc" function can modify rv_pc_[0-1].
 
 rv_ram_base = 0x00000000
 rv_rom_base = 0x80000000
@@ -835,7 +835,7 @@ exec_jalr:
 	jz	exec_jalr_rd_zero
 
 	; Write the next RV PC into rd.
-	lcall	rv_calc_pc
+	lcall	rv_calc_next_pc
 	lcall	set_dst_to_rd_iram_addr
 	mov	@R0, rv_pc_0
 	inc	R0
@@ -866,7 +866,7 @@ exec_jal:
 	jz	exec_jal_rd_zero
 
 	; Write the next RV PC into rd.
-	lcall	rv_calc_pc
+	lcall	rv_calc_next_pc
 	lcall	set_dst_to_rd_iram_addr
 	mov	@R0, rv_pc_0
 	inc	R0
@@ -2756,7 +2756,7 @@ exec_auipc:
 
 exec_auipc_rd_not_zero:
 	lcall	extract_imm_31_12
-	lcall	rv_calc_pc
+	lcall	rv_calc_next_pc
 
 	; Subtract 4 from the calculated PC, since it's currently
 	; pointing to the next instruction and we need it to be pointing
@@ -2858,7 +2858,7 @@ set_src_to_rsN_iram_addr:
 
 	ret
 
-rv_calc_pc:
+rv_calc_next_pc:
 	mov	a, dpl
 	clr	c
 	subb	a, #(rv_code)
