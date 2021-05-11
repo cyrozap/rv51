@@ -418,7 +418,7 @@ exec_load_sign_extend_B:
 
 exec_load_zero_extend_B:
 	; Zero extend for three bytes.
-	mov	a, #0x00
+	clr	a
 
 exec_load_sign_extend_B_final:
 	inc	R0
@@ -447,7 +447,7 @@ exec_load_sign_extend_H:
 
 exec_load_zero_extend_H:
 	; Zero extend for two bytes.
-	mov	a, #0x00
+	clr	a
 
 exec_load_sign_extend_H_final:
 	inc	R0
