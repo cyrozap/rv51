@@ -1651,61 +1651,61 @@ exec_op_rd_not_zero:
 	mov	R3, funct3
 	mov	R7, funct7
 
-	cjne	R3, #0, exec_op_0_0  ; ADD
-	cjne	R7, #0x00, exec_op_0_0
-	ljmp	exec_add
-exec_op_0_0:
-	cjne	R3, #0, exec_op_0_1  ; SUB
-	cjne	R7, #0x20, exec_op_0_1
-	ljmp	exec_sub
-exec_op_0_1:
-	cjne	R3, #0, exec_op_0_2  ; MUL
-	cjne	R7, #0x01, exec_op_0_2
-	ljmp	exec_mul
-exec_op_0_2:
-	cjne	R3, #1, exec_op_1  ; SLL
-	cjne	R7, #0x00, exec_op_1
-	ljmp	exec_sll
-exec_op_1:
-	cjne	R3, #1, exec_op_1_1  ; MULH
-	cjne	R7, #0x01, exec_op_1_1
-	ljmp	exec_mulh
-exec_op_1_1:
-	cjne	R3, #2, exec_op_2  ; SLT
-	cjne	R7, #0x00, exec_op_2
-	ljmp	exec_slt_sltu
-exec_op_2:
-	cjne	R3, #2, exec_op_2_1  ; MULHSU
-	cjne	R7, #0x01, exec_op_2_1
-	ljmp	exec_mulhsu
-exec_op_2_1:
-	cjne	R3, #3, exec_op_3  ; SLTU
-	cjne	R7, #0x00, exec_op_3
-	ljmp	exec_slt_sltu
-exec_op_3:
-	cjne	R3, #3, exec_op_3_1  ; MULHU
-	cjne	R7, #0x01, exec_op_3_1
-	ljmp	exec_mulhu
-exec_op_3_1:
-	cjne	R3, #4, exec_op_4  ; XOR
-	cjne	R7, #0x00, exec_op_4
-	ljmp	exec_xor
-exec_op_4:
-	cjne	R3, #5, exec_op_5  ; SRL/SRA
-	mov	a, R7
-	anl	a, #0xDF
-	cjne	a, #0x00, exec_op_5
-	ljmp	exec_srl_sra
-exec_op_5:
-	cjne	R3, #6, exec_op_6  ; OR
-	cjne	R7, #0x00, exec_op_6
-	ljmp	exec_or
-exec_op_6:
-	cjne	R3, #7, exec_op_7  ; AND
-	cjne	R7, #0x00, exec_op_7
-	ljmp	exec_and
-exec_op_7:
-	; Unrecognized instruction or execution function didn't "ret".
+	cjne	R7, #0x00, exec_op_funct7_not_0x00
+	cjne	R3, #0, 1$
+	ljmp	exec_add  ; ADD
+1$:
+	cjne	R3, #1, 2$
+	ljmp	exec_sll  ; SLL
+2$:
+	cjne	R3, #2, 3$
+	ljmp	exec_slt_sltu  ; SLT
+3$:
+	cjne	R3, #3, 4$
+	ljmp	exec_slt_sltu  ; SLTU
+4$:
+	cjne	R3, #4, 5$
+	ljmp	exec_xor  ; XOR
+5$:
+	cjne	R3, #5, 6$
+	ljmp	exec_srl_sra  ; SRL
+6$:
+	cjne	R3, #6, 7$
+	ljmp	exec_or  ; OR
+7$:
+	cjne	R3, #7, 8$
+	ljmp	exec_and  ; AND
+8$:
+	; Unrecognized instruction.
+	sjmp	.
+
+exec_op_funct7_not_0x00:
+	cjne	R7, #0x01, exec_op_funct7_not_0x01
+	cjne	R3, #0, 1$
+	ljmp	exec_mul  ; MUL
+1$:
+	cjne	R3, #1, 2$
+	ljmp	exec_mulh  ; MULH
+2$:
+	cjne	R3, #2, 3$
+	ljmp	exec_mulhsu  ; MULHSU
+3$:
+	cjne	R3, #3, 4$
+	ljmp	exec_mulhu  ; MULHU
+4$:
+	; Unrecognized instruction.
+	sjmp	.
+
+exec_op_funct7_not_0x01:
+	cjne	R7, #0x20, exec_op_funct7_not_0x20
+	cjne	R3, #0, 1$
+	ljmp	exec_sub  ; SUB
+1$:
+	cjne	R3, #5, 2$
+	ljmp	exec_srl_sra  ; SRA
+2$:
+exec_op_funct7_not_0x20:
+	; Unrecognized instruction.
 	sjmp	.
 
 exec_add:
