@@ -2242,7 +2242,7 @@ exec_mulh_common:
 	mov	rd_dat0, a
 	mov	rd_dat1, b
 
-	mov     a, rs1_dat0
+	mov	a, rs1_dat0
 	mov	b, rs2_dat1
 	mul	ab
 	add	a, rd_dat1
@@ -2254,7 +2254,7 @@ exec_mulh_common:
 	rlc	a
 	mov	rd_dat3, a
 
-	mov     a, rs1_dat0
+	mov	a, rs1_dat0
 	mov	b, rs2_dat2
 	mul	ab
 	add	a, rd_dat2
@@ -2266,7 +2266,7 @@ exec_mulh_common:
 	rlc	a
 	mov	rd_dat4, a
 
-	mov     a, rs1_dat0
+	mov	a, rs1_dat0
 	mov	b, rs2_dat3
 	mul	ab
 	add	a, rd_dat3
@@ -2279,7 +2279,7 @@ exec_mulh_common:
 	mov	rd_dat5, a
 
 	; Round 1, rs1_dat1.
-	mov     a, rs1_dat1
+	mov	a, rs1_dat1
 	mov	b, rs2_dat0
 	mul	ab
 	add	a, rd_dat1
@@ -2300,7 +2300,7 @@ exec_mulh_common:
 	rlc	a
 	mov	rd_dat6, a
 
-	mov     a, rs1_dat1
+	mov	a, rs1_dat1
 	mov	b, rs2_dat1
 	mul	ab
 	add	a, rd_dat2
@@ -2321,7 +2321,7 @@ exec_mulh_common:
 	rlc	a
 	mov	rd_dat7, a
 
-	mov     a, rs1_dat1
+	mov	a, rs1_dat1
 	mov	b, rs2_dat2
 	mul	ab
 	add	a, rd_dat3
@@ -2339,7 +2339,7 @@ exec_mulh_common:
 	addc	a, rd_dat7
 	mov	rd_dat7, a
 
-	mov     a, rs1_dat1
+	mov	a, rs1_dat1
 	mov	b, rs2_dat3
 	mul	ab
 	add	a, rd_dat4
@@ -2355,7 +2355,7 @@ exec_mulh_common:
 	mov	rd_dat7, a
 
 	; Round 2, rs1_dat2.
-	mov     a, rs1_dat2
+	mov	a, rs1_dat2
 	mov	b, rs2_dat0
 	mul	ab
 	add	a, rd_dat2
@@ -2376,7 +2376,7 @@ exec_mulh_common:
 	addc	a, rd_dat7
 	mov	rd_dat7, a
 
-	mov     a, rs1_dat2
+	mov	a, rs1_dat2
 	mov	b, rs2_dat1
 	mul	ab
 	add	a, rd_dat3
@@ -2394,7 +2394,7 @@ exec_mulh_common:
 	addc	a, rd_dat7
 	mov	rd_dat7, a
 
-	mov     a, rs1_dat2
+	mov	a, rs1_dat2
 	mov	b, rs2_dat2
 	mul	ab
 	add	a, rd_dat4
@@ -2409,7 +2409,7 @@ exec_mulh_common:
 	addc	a, rd_dat7
 	mov	rd_dat7, a
 
-	mov     a, rs1_dat2
+	mov	a, rs1_dat2
 	mov	b, rs2_dat3
 	mul	ab
 	add	a, rd_dat5
@@ -2422,7 +2422,7 @@ exec_mulh_common:
 	mov	rd_dat7, a
 
 	; Round 3, rs1_dat3.
-	mov     a, rs1_dat3
+	mov	a, rs1_dat3
 	mov	b, rs2_dat0
 	mul	ab
 	add	a, rd_dat3
@@ -2440,7 +2440,7 @@ exec_mulh_common:
 	addc	a, rd_dat7
 	mov	rd_dat7, a
 
-	mov     a, rs1_dat3
+	mov	a, rs1_dat3
 	mov	b, rs2_dat1
 	mul	ab
 	add	a, rd_dat4
@@ -2455,7 +2455,7 @@ exec_mulh_common:
 	addc	a, rd_dat7
 	mov	rd_dat7, a
 
-	mov     a, rs1_dat3
+	mov	a, rs1_dat3
 	mov	b, rs2_dat2
 	mul	ab
 	add	a, rd_dat5
@@ -2467,7 +2467,7 @@ exec_mulh_common:
 	addc	a, rd_dat7
 	mov	rd_dat7, a
 
-	mov     a, rs1_dat3
+	mov	a, rs1_dat3
 	mov	b, rs2_dat3
 	mul	ab
 	add	a, rd_dat6
