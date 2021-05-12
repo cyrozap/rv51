@@ -1752,50 +1752,27 @@ exec_add:
 	ret
 
 exec_sub:
-	; The 8051 SUBB instruction behaves very strangely when
-	; operating on numbers larger than 8 bits. To work around this,
-	; perform the two's complement on the second operand (rs2) to
-	; negate it, then add the two numbers.
-
-	; First, negate rs2 and store the result in IRAM.
 	clr	c
-	clr	a
-	subb	a, @R1
-	mov	rs2_dat0, a
-	inc	R1
-
-	clr	a
-	subb	a, @R1
-	mov	rs2_dat1, a
-	inc	R1
-
-	clr	a
-	subb	a, @R1
-	mov	rs2_dat2, a
-	inc	R1
-
-	clr	a
-	subb	a, @R1
-	mov	rs2_dat3, a
-
-	; Now, add the first operand to the negated operand.
 	mov	a, rs1_dat0
-	add	a, rs2_dat0
+	subb	a, @R1
 	mov	@R0, a
+	inc	R1
 	inc	R0
 
 	mov	a, rs1_dat1
-	addc	a, rs2_dat1
+	subb	a, @R1
 	mov	@R0, a
+	inc	R1
 	inc	R0
 
 	mov	a, rs1_dat2
-	addc	a, rs2_dat2
+	subb	a, @R1
 	mov	@R0, a
+	inc	R1
 	inc	R0
 
 	mov	a, rs1_dat3
-	addc	a, rs2_dat3
+	subb	a, @R1
 	mov	@R0, a
 
 	ret
