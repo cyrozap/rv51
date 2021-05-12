@@ -19,7 +19,7 @@ rv51.ihx: main.rel
 	$(OBJCOPY) -I ihex -O binary $< $@
 
 test: rv51.bin
-	./test-runner.py -e I $<
+	./test-runner.py $<
 
 clean:
 	rm -f *.asm *.bin *.ihx *.lk *.lst *.map *.mem *.rel *.rst *.sym

@@ -1696,6 +1696,18 @@ exec_op_funct7_not_0x00:
 	cjne	R3, #3, 4$
 	ljmp	exec_mulhu  ; MULHU
 4$:
+	cjne	R3, #4, 5$
+	ljmp	exec_div_rem  ; DIV
+5$:
+	cjne	R3, #5, 6$
+	ljmp	exec_div_rem  ; DIVU
+6$:
+	cjne	R3, #6, 7$
+	ljmp	exec_div_rem  ; REM
+7$:
+	cjne	R3, #7, 8$
+	ljmp	exec_div_rem  ; REMU
+8$:
 	; Unrecognized instruction.
 	sjmp	.
 
@@ -2450,6 +2462,288 @@ exec_mulh_common:
 	mov	a, b
 	addc	a, rd_dat7
 	mov	rd_dat7, a
+
+	ret
+
+exec_div_rem:
+	funct3_bit_0__set_if_unsigned_cleared_if_signed	= (((funct3 - 0x20) * 8) + 0)
+	funct3_bit_1__set_if_rem_cleared_if_div	= (((funct3 - 0x20) * 8) + 1)
+
+	; Load rs2 into rs2_dat[0-3].
+	mov	rs2_dat0, @R1
+	inc	R1
+	mov	rs2_dat1, @R1
+	inc	R1
+	mov	rs2_dat2, @R1
+	inc	R1
+	mov	rs2_dat3, @R1
+
+	; Check if the divisor is zero.
+	clr	a
+	orl	a, rs2_dat0
+	orl	a, rs2_dat1
+	orl	a, rs2_dat2
+	orl	a, rs2_dat3
+	jnz	exec_div_rem_divisor_non_zero
+
+	; Divisor is zero, so check if we're doing a DIV[U] or REM[U].
+	jb	funct3_bit_1__set_if_rem_cleared_if_div, 1$
+
+	; This is a DIV[U], so write 0xFFFFFFFF to the destination
+	; register and return.
+	mov	a, #0xFF
+	mov	@R0, a
+	inc	R0
+	mov	@R0, a
+	inc	R0
+	mov	@R0, a
+	inc	R0
+	mov	@R0, a
+
+	ret
+
+1$:
+	; This is a REM[U], so write the dividend to the destination
+	; register and return.
+	mov	@R0, rs1_dat0
+	inc	R0
+	mov	@R0, rs1_dat1
+	inc	R0
+	mov	@R0, rs1_dat2
+	inc	R0
+	mov	@R0, rs1_dat3
+
+	ret
+
+exec_div_rem_divisor_non_zero:
+	; Check if we're doing signed or unsigned division.
+	jb	funct3_bit_0__set_if_unsigned_cleared_if_signed, exec_div_rem_unsigned
+
+	; We're doing signed division, so check for signed overflow.
+	mov	a, rs1_dat0
+	jnz	exec_div_rem_signed_no_overflow
+	mov	a, rs1_dat1
+	jnz	exec_div_rem_signed_no_overflow
+	mov	a, rs1_dat2
+	jnz	exec_div_rem_signed_no_overflow
+	mov	a, rs1_dat3
+	xrl	a, #0x80
+	jnz	exec_div_rem_signed_no_overflow
+
+	; Signed overflow was detected, so clear the lowest three bytes
+	; of the destination register.
+	clr	a
+	mov	@R0, a
+	inc	R0
+	mov	@R0, a
+	inc	R0
+	mov	@R0, a
+	inc	R0
+
+	; Check if we're doing a DIV or REM.
+	jb	funct3_bit_1__set_if_rem_cleared_if_div, 1$
+
+	; This is a DIV, so write 0x80000000 to the destination register
+	; and return.
+	mov	@R0, #0x80
+	ret
+
+1$:
+	; This is a REM, so write zero to the destination register and
+	; return.
+	mov	@R0, a
+	ret
+
+exec_div_rem_signed_no_overflow:
+	; Check each operand to see if it's negative. If it is,
+	; perform the two's complement on it and note the sign.
+
+	; Set the sign flags to zero.
+	mov	R6, #0
+	mov	R7, #0
+
+	; First, check the sign of rs1, skipping the negation if it's
+	; positive.
+	mov	a, rs1_dat3
+	jnb	ACC.7, 1$
+
+	; Note that rs1 is negative.
+	inc	R6
+
+	; Perform the two's complement on rs1.
+	clr	c
+	clr	a
+	subb	a, rs1_dat0
+	mov	rs1_dat0, a
+	clr	a
+	subb	a, rs1_dat1
+	mov	rs1_dat1, a
+	clr	a
+	subb	a, rs1_dat2
+	mov	rs1_dat2, a
+	clr	a
+	subb	a, rs1_dat3
+	mov	rs1_dat3, a
+
+1$:
+	; Check the sign of rs2, skipping the negation if it's positive.
+	mov	a, rs2_dat3
+	jnb	ACC.7, 2$
+
+	; Note that rs2 is negative.
+	inc	R7
+
+	; Perform the two's complement on rs2.
+	clr	c
+	clr	a
+	subb	a, rs2_dat0
+	mov	rs2_dat0, a
+	clr	a
+	subb	a, rs2_dat1
+	mov	rs2_dat1, a
+	clr	a
+	subb	a, rs2_dat2
+	mov	rs2_dat2, a
+	clr	a
+	subb	a, rs2_dat3
+	mov	rs2_dat3, a
+
+2$:
+
+exec_div_rem_unsigned:
+	; Divide by shift-and-subtract.
+	clr	a
+	mov	rd_dat0, a
+	mov	rd_dat1, a
+	mov	rd_dat2, a
+	mov	rd_dat3, a
+
+	mov	R2, #32
+
+1$:
+	mov	a, rs1_dat3
+	rl	a
+	anl	a, #0x01
+	mov	R3, a
+
+	mov	a, rs1_dat0
+	add	a, rs1_dat0
+	mov	rs1_dat0, a
+	mov	a, rs1_dat1
+	rlc	a
+	mov	rs1_dat1, a
+	mov	a, rs1_dat2
+	rlc	a
+	mov	rs1_dat2, a
+	mov	a, rs1_dat3
+	rlc	a
+	mov	rs1_dat3, a
+
+	mov	a, rd_dat0
+	add	a, rd_dat0
+	mov	rd_dat0, a
+	mov	a, rd_dat1
+	rlc	a
+	mov	rd_dat1, a
+	mov	a, rd_dat2
+	rlc	a
+	mov	rd_dat2, a
+	mov	a, rd_dat3
+	rlc	a
+	mov	rd_dat3, a
+
+	mov	a, R3
+	jz	2$
+	inc	rd_dat0
+2$:
+	clr	c
+	mov	a, rd_dat0
+	subb	a, rs2_dat0
+	mov	a, rd_dat1
+	subb	a, rs2_dat1
+	mov	a, rd_dat2
+	subb	a, rs2_dat2
+	mov	a, rd_dat3
+	subb	a, rs2_dat3
+
+	jc	3$
+
+	clr	c
+	mov	a, rd_dat0
+	subb	a, rs2_dat0
+	mov	rd_dat0, a
+	mov	a, rd_dat1
+	subb	a, rs2_dat1
+	mov	rd_dat1, a
+	mov	a, rd_dat2
+	subb	a, rs2_dat2
+	mov	rd_dat2, a
+	mov	a, rd_dat3
+	subb	a, rs2_dat3
+	mov	rd_dat3, a
+
+	inc	rs1_dat0
+3$:
+	djnz	R2, 1$
+
+	; If we're doing REM[U], the remainder is already in rd_dat[0-3].
+	jb	funct3_bit_1__set_if_rem_cleared_if_div, 4$
+	; If we're doing DIV[U], move rs1_dat[0-3] into rd_dat[0-3].
+	mov	rd_dat0, rs1_dat0
+	mov	rd_dat1, rs1_dat1
+	mov	rd_dat2, rs1_dat2
+	mov	rd_dat3, rs1_dat3
+
+4$:
+
+exec_div_rem_check_negation:
+	; Check if we're doing signed or unsigned division.
+	jb	funct3_bit_0__set_if_unsigned_cleared_if_signed, exec_div_rem_store_positive
+
+	; Check if we need to negate the result by checking the sign
+	; variables we set previously.
+	mov	a, R6
+	; If we're doing REM, the negation is only performed if the
+	; dividend is negative--the sign of the divisor doesn't matter.
+	jb	funct3_bit_1__set_if_rem_cleared_if_div, 1$
+	; If we're doing a DIV, the negation is only performed if the
+	; signs of the dividend and the divisor are different.
+	xrl	a, R7
+1$:
+	jnz	exec_div_rem_store_negative
+
+exec_div_rem_store_positive:
+	; The result is either positive or unsigned, so just store it in
+	; the destination register.
+	mov	@R0, rd_dat0
+	inc	R0
+	mov	@R0, rd_dat1
+	inc	R0
+	mov	@R0, rd_dat2
+	inc	R0
+	mov	@R0, rd_dat3
+
+	ret
+
+exec_div_rem_store_negative:
+	; The result is negative, so we need to negate it before storing
+	; it in the destination register.
+	clr	c
+	clr	a
+	subb	a, rd_dat0
+	mov	@R0, a
+	inc	R0
+	clr	a
+	subb	a, rd_dat1
+	mov	@R0, a
+	inc	R0
+	clr	a
+	subb	a, rd_dat2
+	mov	@R0, a
+	inc	R0
+	clr	a
+	subb	a, rd_dat3
+	mov	@R0, a
 
 	ret
 

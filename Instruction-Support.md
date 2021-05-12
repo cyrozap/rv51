@@ -51,10 +51,10 @@
 - [x] MULH
 - [x] MULHSU
 - [x] MULHU
-- [ ] DIV
-- [ ] DIVU
-- [ ] REM
-- [ ] REMU
+- [x] DIV
+- [x] DIVU
+- [x] REM
+- [x] REMU
 
 
 ## RV32C Instruction Set

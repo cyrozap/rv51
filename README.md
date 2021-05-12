@@ -85,13 +85,14 @@ The target 8051-family microcontroller must have at least 256 bytes of
 internal data memory, since the emulator uses the upper 128 bytes as the
 register file.
 
-This emulator is only meant to support the RV32I instruction set, and maybe
-the "M" and "C" extensions if they're not too difficult to implement. 64-bit
-and floating point support will never be added, since both would require too
-much memory and the hardware doesn't have floating point support.
+This emulator is only meant to support the RV32IM instruction set, and maybe
+the "C" extension if it's not too difficult to implement. 64-bit and floating
+point support will never be added, since both would require too much memory
+and the hardware doesn't have floating point support.
 
-All 40 instructions of the RV32I Base Instruction Set have been implemented.
-You can see instruction support status in [Instruction Support][isa-support].
+All 40 instructions of the RV32I Base Instruction Set and all eight
+instructions of the RV32M Standard Extension have been implemented. You can
+see instruction support status in [Instruction Support][isa-support].
 
 Interrupts are not yet supported, nor is the rest of machine-mode (M-mode).
 
