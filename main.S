@@ -1742,30 +1742,25 @@ exec_sub:
 	; perform the two's complement on the second operand (rs2) to
 	; negate it, then add the two numbers.
 
-	; First, negate rs2 and store the result in IRAM. XRL doesn't
-	; affect the carry bit, so we can perform the bit inversion and
-	; the addition at the same time.
-	mov	a, @R1
-	xrl	a, #0xFF
-	add	a, #1
+	; First, negate rs2 and store the result in IRAM.
+	clr	c
+	clr	a
+	subb	a, @R1
 	mov	rs2_dat0, a
 	inc	R1
 
-	mov	a, @R1
-	xrl	a, #0xFF
-	addc	a, #0
+	clr	a
+	subb	a, @R1
 	mov	rs2_dat1, a
 	inc	R1
 
-	mov	a, @R1
-	xrl	a, #0xFF
-	addc	a, #0
+	clr	a
+	subb	a, @R1
 	mov	rs2_dat2, a
 	inc	R1
 
-	mov	a, @R1
-	xrl	a, #0xFF
-	addc	a, #0
+	clr	a
+	subb	a, @R1
 	mov	rs2_dat3, a
 
 	; Now, add the first operand to the negated operand.
@@ -1964,21 +1959,18 @@ exec_mulh:
 	inc	R6
 
 	; Perform the two's complement on rs1.
-	mov	a, rs1_dat0
-	xrl	a, #0xFF
-	add	a, #1
+	clr	c
+	clr	a
+	subb	a, rs1_dat0
 	mov	rs1_dat0, a
-	mov	a, rs1_dat1
-	xrl	a, #0xFF
-	addc	a, #0
+	clr	a
+	subb	a, rs1_dat1
 	mov	rs1_dat1, a
-	mov	a, rs1_dat2
-	xrl	a, #0xFF
-	addc	a, #0
+	clr	a
+	subb	a, rs1_dat2
 	mov	rs1_dat2, a
-	mov	a, rs1_dat3
-	xrl	a, #0xFF
-	addc	a, #0
+	clr	a
+	subb	a, rs1_dat3
 	mov	rs1_dat3, a
 
 1$:
@@ -1999,24 +1991,21 @@ exec_mulh:
 
 	; Load rs2 into rs2_dat[0-3], simultaneously performing the
 	; two's complement on it.
-	mov	a, @R1
-	xrl	a, #0xFF
-	add	a, #1
+	clr	c
+	clr	a
+	subb	a, @R1
 	mov	rs2_dat0, a
 	inc	R1
-	mov	a, @R1
-	xrl	a, #0xFF
-	addc	a, #0
+	clr	a
+	subb	a, @R1
 	mov	rs2_dat1, a
 	inc	R1
-	mov	a, @R1
-	xrl	a, #0xFF
-	addc	a, #0
+	clr	a
+	subb	a, @R1
 	mov	rs2_dat2, a
 	inc	R1
-	mov	a, @R1
-	xrl	a, #0xFF
-	addc	a, #0
+	clr	a
+	subb	a, @R1
 	mov	rs2_dat3, a
 
 	sjmp	3$
@@ -2045,37 +2034,30 @@ exec_mulh:
 	; it in the destination register. We need to perform the
 	; negation on the whole 64-bit result, since it won't work
 	; otherwise.
-	mov	a, rd_dat0
-	xrl	a, #0xFF
-	add	a, #1
-	mov	a, rd_dat1
-	xrl	a, #0xFF
-	addc	a, #0
-	mov	a, rd_dat2
-	xrl	a, #0xFF
-	addc	a, #0
-	mov	a, rd_dat3
-	xrl	a, #0xFF
-	addc	a, #0
+	clr	c
+	clr	a
+	subb	a, rd_dat0
+	clr	a
+	subb	a, rd_dat1
+	clr	a
+	subb	a, rd_dat2
+	clr	a
+	subb	a, rd_dat3
 
-	mov	a, rd_dat4
-	xrl	a, #0xFF
-	addc	a, #0
+	clr	a
+	subb	a, rd_dat4
 	mov	@R0, a
 	inc	R0
-	mov	a, rd_dat5
-	xrl	a, #0xFF
-	addc	a, #0
+	clr	a
+	subb	a, rd_dat5
 	mov	@R0, a
 	inc	R0
-	mov	a, rd_dat6
-	xrl	a, #0xFF
-	addc	a, #0
+	clr	a
+	subb	a, rd_dat6
 	mov	@R0, a
 	inc	R0
-	mov	a, rd_dat7
-	xrl	a, #0xFF
-	addc	a, #0
+	clr	a
+	subb	a, rd_dat7
 	mov	@R0, a
 
 	ret
@@ -2109,21 +2091,18 @@ exec_mulhsu:
 	inc	R6
 
 	; Perform the two's complement on rs1.
-	mov	a, rs1_dat0
-	xrl	a, #0xFF
-	add	a, #1
+	clr	c
+	clr	a
+	subb	a, rs1_dat0
 	mov	rs1_dat0, a
-	mov	a, rs1_dat1
-	xrl	a, #0xFF
-	addc	a, #0
+	clr	a
+	subb	a, rs1_dat1
 	mov	rs1_dat1, a
-	mov	a, rs1_dat2
-	xrl	a, #0xFF
-	addc	a, #0
+	clr	a
+	subb	a, rs1_dat2
 	mov	rs1_dat2, a
-	mov	a, rs1_dat3
-	xrl	a, #0xFF
-	addc	a, #0
+	clr	a
+	subb	a, rs1_dat3
 	mov	rs1_dat3, a
 
 1$:
@@ -2147,37 +2126,30 @@ exec_mulhsu:
 	; it in the destination register. We need to perform the
 	; negation on the whole 64-bit result, since it won't work
 	; otherwise.
-	mov	a, rd_dat0
-	xrl	a, #0xFF
-	add	a, #1
-	mov	a, rd_dat1
-	xrl	a, #0xFF
-	addc	a, #0
-	mov	a, rd_dat2
-	xrl	a, #0xFF
-	addc	a, #0
-	mov	a, rd_dat3
-	xrl	a, #0xFF
-	addc	a, #0
+	clr	c
+	clr	a
+	subb	a, rd_dat0
+	clr	a
+	subb	a, rd_dat1
+	clr	a
+	subb	a, rd_dat2
+	clr	a
+	subb	a, rd_dat3
 
-	mov	a, rd_dat4
-	xrl	a, #0xFF
-	addc	a, #0
+	clr	a
+	subb	a, rd_dat4
 	mov	@R0, a
 	inc	R0
-	mov	a, rd_dat5
-	xrl	a, #0xFF
-	addc	a, #0
+	clr	a
+	subb	a, rd_dat5
 	mov	@R0, a
 	inc	R0
-	mov	a, rd_dat6
-	xrl	a, #0xFF
-	addc	a, #0
+	clr	a
+	subb	a, rd_dat6
 	mov	@R0, a
 	inc	R0
-	mov	a, rd_dat7
-	xrl	a, #0xFF
-	addc	a, #0
+	clr	a
+	subb	a, rd_dat7
 	mov	@R0, a
 
 	ret
