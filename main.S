@@ -82,6 +82,9 @@ reset:
 init:
 	; Set stack pointer to scratch pad area.
 	mov	sp, #(0x40-1)
+	; Use register bank zero.
+	clr	psw.3
+	clr	psw.4
 	; Use dptr as the RV's PC, offset by #rv_code.
 	mov	dptr, #(rv_code)
 	; Zero all RV registers. This is necessary for x0 since we don't
