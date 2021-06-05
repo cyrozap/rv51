@@ -2589,20 +2589,31 @@ exec_div_rem_signed_no_overflow:
 
 exec_div_rem_unsigned:
 	; Divide by shift-and-subtract.
+
+	; The following algorithm is modified from a compiled form of
+	; SDCC's "_divulong.c", originally licensed under version 2 or
+	; later of the GNU General Public License.
+	; Copyright (C) 1999, Jean-Louis Vern <jlvern AT gmail.com>
+
+	; Set the remainder to zero.
 	clr	a
 	mov	rd_dat0, a
 	mov	rd_dat1, a
 	mov	rd_dat2, a
 	mov	rd_dat3, a
 
+	; Set the iteration count to 32.
 	mov	R2, #32
 
+	; Loop over each bit.
 1$:
+	; Get the MSB of the dividend.
 	mov	a, rs1_dat3
 	rl	a
 	anl	a, #0x01
 	mov	R3, a
 
+	; Shift the dividend left by 1 bit.
 	mov	a, rs1_dat0
 	add	a, rs1_dat0
 	mov	rs1_dat0, a
@@ -2616,6 +2627,7 @@ exec_div_rem_unsigned:
 	rlc	a
 	mov	rs1_dat3, a
 
+	; Shift the remainder left by 1 bit.
 	mov	a, rd_dat0
 	add	a, rd_dat0
 	mov	rd_dat0, a
@@ -2629,10 +2641,13 @@ exec_div_rem_unsigned:
 	rlc	a
 	mov	rd_dat3, a
 
+	; Set the LSB of the remainder to 1 if the MSB of the dividend
+	; was set.
 	mov	a, R3
 	jz	2$
 	inc	rd_dat0
 2$:
+	; Compare the current remainder with the divisor.
 	clr	c
 	mov	a, rd_dat0
 	subb	a, rs2_dat0
@@ -2643,6 +2658,9 @@ exec_div_rem_unsigned:
 	mov	a, rd_dat3
 	subb	a, rs2_dat3
 
+	; If the remainder is greater than or equal to the divisor,
+	; subtract the divisor from the remainder and set the lowest bit
+	; of the dividend to 1.
 	jc	3$
 
 	clr	c
