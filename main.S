@@ -2590,9 +2590,9 @@ exec_div_rem_signed_no_overflow:
 exec_div_rem_unsigned:
 	; Divide by shift-and-subtract.
 
-	; The following algorithm is modified from a compiled form of
-	; SDCC's "_divulong.c", originally licensed under version 2 or
-	; later of the GNU General Public License.
+	; The following algorithm is modified from SDCC's "_divulong.c",
+	; which is licensed under version 2 or later of the GNU General
+	; Public License.
 	; Copyright (C) 1999, Jean-Louis Vern <jlvern AT gmail.com>
 
 	; Set the remainder to zero.
@@ -2605,14 +2605,9 @@ exec_div_rem_unsigned:
 	; Set the iteration count to 32.
 	mov	R2, #32
 
-	; Loop over each bit.
+	; Loop until the first bit from the dividend is shifted into the
+	; remainder.
 1$:
-	; Get the MSB of the dividend.
-	mov	a, rs1_dat3
-	rl	a
-	anl	a, #0x01
-	mov	R3, a
-
 	; Shift the dividend left by 1 bit.
 	mov	a, rs1_dat0
 	add	a, rs1_dat0
@@ -2627,9 +2622,48 @@ exec_div_rem_unsigned:
 	rlc	a
 	mov	rs1_dat3, a
 
-	; Shift the remainder left by 1 bit.
+	jc	3$
+	djnz	R2, 1$
+
+	; If we get here, that means that the dividend is zero. Since
+	; the dividend is zero, the quotient and remainder must both be
+	; zero. Since both the quotient and remainder are zero, the
+	; result we're returning will be the same regardless of whether
+	; we're doing a DIV[U] or REM[U]. And since the negative of zero
+	; is zero, we don't care if the divisor is negative since a
+	; negation would still return zero. So, we can just skip to
+	; returning the zero result, and since "A" is already zero, we
+	; can just save that to the destination register directly.
+	mov	@R0, a
+	inc	R0
+	mov	@R0, a
+	inc	R0
+	mov	@R0, a
+	inc	R0
+	mov	@R0, a
+
+	ret
+
+2$:
+	; Shift the dividend left by 1 bit.
+	mov	a, rs1_dat0
+	add	a, rs1_dat0
+	mov	rs1_dat0, a
+	mov	a, rs1_dat1
+	rlc	a
+	mov	rs1_dat1, a
+	mov	a, rs1_dat2
+	rlc	a
+	mov	rs1_dat2, a
+	mov	a, rs1_dat3
+	rlc	a
+	mov	rs1_dat3, a
+
+3$:
+	; Shift the remainder left by 1 bit, feeding in the carry from
+	; shifting the dividend.
 	mov	a, rd_dat0
-	add	a, rd_dat0
+	rlc	a
 	mov	rd_dat0, a
 	mov	a, rd_dat1
 	rlc	a
@@ -2641,14 +2675,9 @@ exec_div_rem_unsigned:
 	rlc	a
 	mov	rd_dat3, a
 
-	; Set the LSB of the remainder to 1 if the MSB of the dividend
-	; was set.
-	mov	a, R3
-	jz	2$
-	inc	rd_dat0
-2$:
 	; Compare the current remainder with the divisor.
-	clr	c
+	; Carry is always clear here because remainder <<=1 never
+	; overflows.
 	mov	a, rd_dat0
 	subb	a, rs2_dat0
 	mov	a, rd_dat1
@@ -2661,9 +2690,8 @@ exec_div_rem_unsigned:
 	; If the remainder is greater than or equal to the divisor,
 	; subtract the divisor from the remainder and set the lowest bit
 	; of the dividend to 1.
-	jc	3$
+	jc	4$
 
-	clr	c
 	mov	a, rd_dat0
 	subb	a, rs2_dat0
 	mov	rd_dat0, a
@@ -2678,18 +2706,19 @@ exec_div_rem_unsigned:
 	mov	rd_dat3, a
 
 	inc	rs1_dat0
-3$:
-	djnz	R2, 1$
+
+4$:
+	djnz	R2, 2$
 
 	; If we're doing REM[U], the remainder is already in rd_dat[0-3].
-	jb	funct3_bit_1__set_if_rem_cleared_if_div, 4$
+	jb	funct3_bit_1__set_if_rem_cleared_if_div, 5$
 	; If we're doing DIV[U], move rs1_dat[0-3] into rd_dat[0-3].
 	mov	rd_dat0, rs1_dat0
 	mov	rd_dat1, rs1_dat1
 	mov	rd_dat2, rs1_dat2
 	mov	rd_dat3, rs1_dat3
 
-4$:
+5$:
 
 exec_div_rem_check_negation:
 	; Check if we're doing signed or unsigned division.
