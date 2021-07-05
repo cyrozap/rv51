@@ -73,6 +73,7 @@ So, really the "Why?" comes down to several factors. In no particular order:
 ## How do I use it?
 
 1. Install [SDCC][sdcc].
+2. `cd` to the `src` directory.
 2. Run `make`.
 3. `cat rv51.bin your-risc-v-program.bin > firmware.bin`
 4. Write `firmware.bin` to your 8051's program memory.
@@ -110,5 +111,5 @@ later][gpl].
 [rust]: https://www.rust-lang.org/
 [risc-v]: https://riscv.org/
 [vmu]: https://dmitry.gr/?r=05.Projects&proj=25.%20VMU%20Hacking
-[isa-support]: Instruction-Support.md
+[isa-support]: doc/Instruction-Support.md
 [gpl]: https://www.gnu.org/licenses/gpl-3.0.en.html
