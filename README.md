@@ -74,10 +74,10 @@ So, really the "Why?" comes down to several factors. In no particular order:
 
 1. Install [SDCC][sdcc].
 2. `cd` to the `src` directory.
-2. Run `make`.
-3. `cat rv51.bin your-risc-v-program.bin > firmware.bin`
-4. Write `firmware.bin` to your 8051's program memory.
-5. Power on the 8051 and release it from reset.
+3. Run `make`.
+4. `cat rv51.bin your-risc-v-program.bin > firmware.bin`
+5. Write `firmware.bin` to your 8051's program memory.
+6. Power on the 8051 and release it from reset.
 
 
 ## What are the limitations?
