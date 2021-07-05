@@ -57,7 +57,7 @@
 - [x] REMU
 
 
-## RV32C Instruction Set
+## RV32C Standard Extension
 
 - [ ] C.LWSP
 - [ ] C.SWSP
