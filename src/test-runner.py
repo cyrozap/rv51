@@ -147,8 +147,8 @@ class RiscvTestsTestRunner:
         command_file_args = ""
         if data_section:
             command_file = tempfile.NamedTemporaryFile(prefix=name_prefix, suffix=".txt")
-            for addr in range(len(data_section)):
-                command_file.write("fill xram 0x{:04x} 0x{:04x} 0x{:02x}\n".format(addr, addr, data_section[addr]).encode('utf-8'))
+            for addr, data_byte in enumerate(data_section):
+                command_file.write("fill xram 0x{:04x} 0x{:04x} 0x{:02x}\n".format(addr, addr, data_byte).encode('utf-8'))
             command_file.flush()
             command_file_args = "-C {}".format(command_file.name)
 
