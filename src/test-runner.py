@@ -159,7 +159,7 @@ class RiscvTestsTestRunner:
 
         # Start the simulator, writing serial output to the FIFO.
         simulator = "s51 -t 8052 -X 78M -P -b -S out={} {} -G {}".format(serial_fifo_path, command_file_args, combined_ihex.name).split()
-        sim_proc = subprocess.Popen(simulator, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        sim_proc = subprocess.Popen(simulator, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
         # Open the FIFO *after* starting the simulator. Opening it before will
         # cause the runner to hang.
