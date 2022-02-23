@@ -151,13 +151,20 @@ decode_8:
 	ret
 decode_9:
 	cjne	R2, #0x73, decode_10  ; SYSTEM
-	jb	(((instruction_0 - 0x20) * 8) + 20), exec_ebreak
-	ljmp	exec_ecall
+	lcall	extract_funct3
+	mov	R3, funct3
+	cjne	R3, #0x00, exec_csr_op
+	mov	a, instruction_2
+	jz	exec_ecall
 exec_ebreak:
 	; EBREAK is a no-op, but with an explicit "nop" instruction so
 	; we can both easily break on it in an 8051 debugger while
 	; ignoring it on real hardware.
 	nop
+	ret
+exec_csr_op:
+	; Treat CSR operations as no-ops for now.
+	; TODO: Implement CSR operations.
 	ret
 decode_10:
 	; Unrecognized instruction or execution function didn't "ret".
