@@ -2456,8 +2456,7 @@ exec_div_rem:
 	mov	rs2_dat3, @R1
 
 	; Check if the divisor is zero.
-	clr	a
-	orl	a, rs2_dat0
+	mov	a, rs2_dat0
 	orl	a, rs2_dat1
 	orl	a, rs2_dat2
 	orl	a, rs2_dat3
