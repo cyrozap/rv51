@@ -1,0 +1,9 @@
+[package]
+name = "hello-rv32"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+riscv = "0.7.0"
+riscv-rt = "0.8.1"
+volatile-register = "0.2.1"
