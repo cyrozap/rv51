@@ -79,6 +79,9 @@ So, really the "Why?" comes down to several factors. In no particular order:
 5. Write `firmware.bin` to your 8051's program memory.
 6. Power on the 8051 and release it from reset.
 
+Example RISC-V programs that can run on rv51 in an 8051 simulator can be found
+in the [examples][examples] directory.
+
 
 ## What are the limitations?
 
@@ -111,5 +114,6 @@ later][gpl].
 [rust]: https://www.rust-lang.org/
 [risc-v]: https://riscv.org/
 [vmu]: https://dmitry.gr/?r=05.Projects&proj=25.%20VMU%20Hacking
+[examples]: examples
 [isa-support]: doc/Instruction-Support.md
 [gpl]: https://www.gnu.org/licenses/gpl-3.0.en.html
