@@ -502,15 +502,15 @@ sfr_byte_read:
 sfr_read_addr_ge_0x80:
 	; Address is >= 0x80, and (address - 0x80) * 2 is in the A register.
 
-	; Rotate A right by one, dividing it by two so it is now
-	; (address - 0x80), and then store it in R7.
-	rr	a
+	; Save A, which is (address - 0x80) * 2, to R7.
 	mov	R7, a
 
-	; Rotate A left by one, multiplying it by two so it is once
-	; again (address - 0x80) * 2, then add R7 to it so it is now
-	; (address - 0x80) * 3, with the carry bit set to the high bit.
-	rl	a
+	; Rotate A right by one, dividing it by two to make it
+	; (address - 0x80).
+	rr	a
+
+	; Add R7 to A to make it (address - 0x80) * 3, with the carry
+	; bit set to the high bit.
 	add	a, R7
 
 	; If the carry bit isn't set, that means the address is < 0xD6.
@@ -1076,15 +1076,15 @@ sfr_byte_write:
 sfr_write_addr_ge_0x80:
 	; Address is >= 0x80, and (address - 0x80) * 2 is in the A register.
 
-	; Rotate A right by one, dividing it by two so it is now
-	; (address - 0x80), and then store it in R7.
-	rr	a
+	; Save A, which is (address - 0x80) * 2, to R7.
 	mov	R7, a
 
-	; Rotate A left by one, multiplying it by two so it is once
-	; again (address - 0x80) * 2, then add R7 to it so it is now
-	; (address - 0x80) * 3, with the carry bit set to the high bit.
-	rl	a
+	; Rotate A right by one, dividing it by two to make it
+	; (address - 0x80).
+	rr	a
+
+	; Add R7 to A to make it (address - 0x80) * 3, with the carry
+	; bit set to the high bit.
 	add	a, R7
 
 	; If the carry bit isn't set, that means the address is < 0xD6.
