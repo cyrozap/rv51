@@ -1070,8 +1070,7 @@ sfr_byte_write:
 	rlc	a
 	jc	sfr_write_addr_ge_0x80
 
-	; Address is < 0x80, so return zero.
-	mov	a, #0
+	; Address is < 0x80, so return early.
 	ret
 
 sfr_write_addr_ge_0x80:
