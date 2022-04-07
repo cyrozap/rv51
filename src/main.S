@@ -496,7 +496,7 @@ sfr_byte_read:
 	jc	sfr_read_addr_ge_0x80
 
 	; Address is < 0x80, so return zero.
-	mov	a, #0
+	clr	a
 	ret
 
 sfr_read_addr_ge_0x80:
