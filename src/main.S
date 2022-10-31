@@ -1,6 +1,6 @@
 ;------------------------------------------------------------------------;
 ; rv51 - A RISC-V emulator for the 8051 microcontroller.                 ;
-; Copyright (C) 2020-2021  Forest Crossman <cyrozap@gmail.com>           ;
+; Copyright (C) 2020-2022  Forest Crossman <cyrozap@gmail.com>           ;
 ;                                                                        ;
 ; This program is free software: you can redistribute it and/or modify   ;
 ; it under the terms of the GNU General Public License as published by   ;
@@ -3367,19 +3367,15 @@ extract_rs2:
 	ret
 
 extract_rs1:
-	ar2	= 0x02
-	mov	R2, instruction_1
-
-	; ANL R2 with 0x80 to get the bottom bit of rs1.
-	anl	ar2, #0x80
+	; Move the bottom bit of rs1 into the carry bit.
+	mov	c, (((instruction_1 - 0x20) * 8) + 7)
 
 	; ANL instruction_2 with 0x0F to get the top four bits of rs1.
 	mov	a, instruction_2
 	anl	a, #0x0F
 
-	; ORL the two registers, then rotate left to get rs1.
-	orl	a, R2
-	rl	a
+	; Rotate left with the carry bit to get rs1.
+	rlc	a
 
 	; Store the result in rs1.
 	mov	rs1, a
