@@ -3347,18 +3347,16 @@ extract_funct7:
 	ret
 
 extract_rs2:
-	ar2	= 0x02
-
 	; ANL instruction_2 with 0xF0 to get the bottom four bits of rs2.
 	mov	a, instruction_2
 	anl	a, #0xF0
 
-	; ANL R2 with 0x01 to get the top bit of rs2.
-	mov	R2, instruction_3
-	anl	ar2, #0x01
+	; Move the top bit of rs2 into the carry bit.
+	mov	c, (((instruction_3 - 0x20) * 8) + 0)
 
-	; ORL the two registers, then swap nybbles to get rs2.
-	orl	a, R2
+	; Move the carry bit into the bottom bit of A, then swap nybbles to get rs2.
+	rr	a
+	rlc	a
 	swap	a
 
 	; Store the result in rs2.
