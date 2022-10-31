@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 # test-runner.py - A script to run tests for the rv51 emulator.
 # Copyright (C) 2020-2021  Forest Crossman <cyrozap@gmail.com>
 #
@@ -15,7 +16,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
 
 
 import argparse
