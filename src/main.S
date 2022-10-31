@@ -1444,10 +1444,10 @@ slti_sltiu_check_unsigned:
 
 slti_sltiu_final:
 	; if rs1 < immediate, the carry bit will be set. Clear A, then
-	; do "A = A + 0 + C" so that A is 1 when rs1 < immediate and 0
+	; rotate C into A so that A is 1 when rs1 < immediate and 0
 	; otherwise.
 	clr	a
-	addc	a, #0
+	rlc	a
 
 	; Set the result in the register.
 	mov	@R0, a
@@ -2869,10 +2869,10 @@ slt_sltu_check_unsigned:
 
 slt_sltu_final:
 	; if rs1 < immediate, the carry bit will be set. Clear A, then
-	; do "A = A + 0 + C" so that A is 1 when rs1 < immediate and 0
+	; rotate C into A so that A is 1 when rs1 < immediate and 0
 	; otherwise.
 	clr	a
-	addc	a, #0
+	rlc	a
 
 	; Set the result in the register.
 	mov	@R0, a
