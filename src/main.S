@@ -3211,10 +3211,9 @@ extract_imm_20_10_1_11_19_12:
 	mov	immediate_0, a
 
 	; Extract imm[11] and OR it with immediate_1.
-	mov	a, instruction_2
-	swap	a
-	rr	a
-	anl	a, #0x80
+	mov	c, (((instruction_0 - 0x20) * 8) + 20)
+	clr	a
+	rrc	a
 	swap	a
 	orl	immediate_1, a
 
