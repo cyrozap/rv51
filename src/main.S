@@ -3248,21 +3248,15 @@ extract_imm_20_10_1_11_19_12_negative:
 	ret
 
 extract_imm_11_5_4_0:
-	ar2 = 2
+	; Move the lowest bit of imm[4:0] into C.
+	mov	c, (((instruction_0 - 0x20) * 8) + 7)
 
-	; Copy the lowest instruction byte to working register R2.
-	mov	R2, instruction_0
+	; Move the remaining bits of imm[4:0] into A.
+	mov	a, instruction_1
+	anl	a, #0x0F
 
-	; Rotate instruction_1:R2 left by 1.
-	MOV	A, instruction_1
-	MOV	C, ACC.7
-	XCH	A, R2
-	RLC	A
-	XCH	A, R2
-	RLC	A
-
-	; Extract imm[4:0] from R3.
-	anl	a, #0x1F
+	; Rotate the carry bit into A.
+	rlc	a
 
 	; Copy the result to immediate_0.
 	mov	immediate_0, a
