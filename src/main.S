@@ -3279,25 +3279,29 @@ extract_imm_11_5_4_0:
 	ljmp	twelve_bit_immediate_sign_extension
 
 extract_imm_11_0:
-	; Copy the two highest instruction bytes to R3:R2.
-	mov	R2, instruction_2
-	mov	R3, instruction_3
+	; Copy imm[3:0]|rs1[4:1] to A.
+	mov	a, instruction_2
 
-	; rotate right R3:R2 by 4
-	MOV A, R2
-	XRL A, R3
-	ANL A, #0xf0
-	XCH A, R3
-	XRL A, R3
-	SWAP A
-	XCH A, R2
-	XRL A, R3
-	SWAP A
-	;MOV R3, A
+	; Swap the nybbles to make rs1[4:1]|imm[3:0].
+	swap	a
 
-	; Store the result in immediate_1:immediate_0.
-	mov	immediate_0, R2
+	; Extract imm[3:0] and store it in immediate_0.
+	anl	a, #0x0F
+	mov	immediate_0, a
+
+	; Copy imm[11:4] to A.
+	mov	a, instruction_3
+
+	; Swap the nybbles to make imm[7:4]|imm[11:8].
+	swap	a
+
+	; Store imm[7:4]|imm[11:8] in immediate_1 (the upper 4 bits will be
+	; overwritten by the sign extension process).
 	mov	immediate_1, a
+
+	; Extract imm[7:4] and OR it with immediate_0.
+	anl	a, #0xF0
+	orl	immediate_0, a
 
 twelve_bit_immediate_sign_extension:
 	; Extend the sign.
