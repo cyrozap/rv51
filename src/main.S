@@ -3388,18 +3388,15 @@ extract_funct3:
 	ret
 
 extract_rd:
-	mov	R2, instruction_0
+	; Move the lowest bit of rd into C.
+	mov	c, (((instruction_0 - 0x20) * 8) + 7)
 
-	; Rotate instruction_1:R2 left by 1.
-	MOV	A, instruction_1
-	MOV	C, ACC.7
-	XCH	A, R2
-	RLC	A
-	XCH	A, R2
-	RLC	A
+	; Move the remaining bits of rd into A.
+	mov	a, instruction_1
+	anl	a, #0x0F
 
-	; Extract the RV reg number from R3.
-	anl	a, #0x1F
+	; Rotate the carry bit into A.
+	rlc	a
 
 	; Copy the result to rd.
 	mov	rd, a
