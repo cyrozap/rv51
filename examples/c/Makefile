@@ -54,7 +54,7 @@ combined.bin: ../../src/rv51.bin hello-rv32.bin
 	sdobjcopy -I binary -O ihex $< $@
 
 sim: combined.ihx
-	s51 -t 8052 -X 12M -b -S out=- -e "break $(shell grep exec_ebreak: ../../src/main.lst | sed 's/\s\+\([0-9A-F]\+\).*/0x\1/g')" -e run $<
+	s51 -t 8052 -X 12M -b -S out=- -e "break $(shell grep exec_ebreak: ../../src/main.lst | sed 's/\s\+\([0-9A-F]\+\).*/0x\1/g')" -e run $< </dev/null
 
 clean:
 	rm -f *.bin *.elf *.ihx *.map *.o
