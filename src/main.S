@@ -26,7 +26,7 @@
 ; - RV's PC = 0x80000000 + (DPTR - #rv_code)
 ; - Instruction execution functions are each responsible for extracting
 ;   their parameters from their instructions.
-; - Only the "fetch_instruction" function can modify instruction_[0-3].
+; - Only the "Fetch instruction" code can modify instruction_[0-3].
 ; - Only the "set_dst_to_rd_iram_addr" and "init" functions can modify
 ;   R0.
 ; - Only the "set_src_to_rs1_iram_addr" and "set_src_to_rs2_iram_addr"
@@ -99,7 +99,26 @@ zero_rv_regs:
 	inc	R0
 	cjne	R0, #0, zero_rv_regs
 emu_loop:
-	lcall	fetch_instruction
+	; Fetch instruction
+	mov	curr_pc_dptr_0, dpl
+	mov	curr_pc_dptr_1, dph
+	clr	a
+	movc	a, @a+dptr
+	mov	instruction_0, a
+	inc	dptr
+	clr	a
+	movc	a, @a+dptr
+	mov	instruction_1, a
+	inc	dptr
+	clr	a
+	movc	a, @a+dptr
+	mov	instruction_2, a
+	inc	dptr
+	clr	a
+	movc	a, @a+dptr
+	mov	instruction_3, a
+	inc	dptr
+
 	lcall	decode_opcode
 	sjmp	emu_loop
 
@@ -3398,27 +3417,6 @@ extract_rd:
 	; Copy the result to rd.
 	mov	rd, a
 
-	ret
-
-fetch_instruction:
-	mov	curr_pc_dptr_0, dpl
-	mov	curr_pc_dptr_1, dph
-	clr	a
-	movc	a, @a+dptr
-	mov	instruction_0, a
-	inc	dptr
-	clr	a
-	movc	a, @a+dptr
-	mov	instruction_1, a
-	inc	dptr
-	clr	a
-	movc	a, @a+dptr
-	mov	instruction_2, a
-	inc	dptr
-	clr	a
-	movc	a, @a+dptr
-	mov	instruction_3, a
-	inc	dptr
 	ret
 
 emulator_size:
