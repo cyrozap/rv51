@@ -1,0 +1,3 @@
+[submodule "src/riscv-tests"]
+	path = src/riscv-tests
+	url = https://github.com/cyrozap/riscv-tests.git

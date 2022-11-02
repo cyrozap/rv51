@@ -34,7 +34,13 @@ rv51.ihx: main.rel
 %.bin: %.ihx
 	$(OBJCOPY) -I ihex -O binary $< $@
 
-test: rv51.bin
+riscv-tests/env/p/link.ld:
+	git submodule update --init --recursive
+
+riscv-tests/isa/rv32ui-p-simple.bin: riscv-tests/env/p/link.ld
+	make -C riscv-tests/isa
+
+test: rv51.bin riscv-tests/isa/rv32ui-p-simple.bin
 	python3 test-runner.py $<
 
 clean:
