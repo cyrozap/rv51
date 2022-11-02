@@ -441,21 +441,16 @@ exec_load_sign_extend_B:
 	mov	a, R2
 	jnb	ACC.7, exec_load_zero_extend_B
 
-	; Sign was negative.
-	mov	a, #0xFF
-	sjmp	exec_load_sign_extend_B_final
+	; Sign was negative. Sign extend for three bytes.
+	inc	R0
+	mov	@R0, #0xFF
 
-exec_load_zero_extend_B:
-	; Zero extend for three bytes.
-	clr	a
-
-exec_load_sign_extend_B_final:
+exec_load_sign_extend_H_final:
+	; Sign extend for two bytes.
 	inc	R0
-	mov	@R0, a
+	mov	@R0, #0xFF
 	inc	R0
-	mov	@R0, a
-	inc	R0
-	mov	@R0, a
+	mov	@R0, #0xFF
 
 	; Done extending, jump to the end.
 	sjmp	exec_load_done
@@ -471,18 +466,19 @@ exec_load_sign_extend_H:
 	jnb	ACC.7, exec_load_zero_extend_H
 
 	; Sign was negative.
-	mov	a, #0xFF
 	sjmp	exec_load_sign_extend_H_final
+
+exec_load_zero_extend_B:
+	; Zero extend for three bytes.
+	inc	R0
+	mov	@R0, #0x00
 
 exec_load_zero_extend_H:
 	; Zero extend for two bytes.
-	clr	a
-
-exec_load_sign_extend_H_final:
 	inc	R0
-	mov	@R0, a
+	mov	@R0, #0x00
 	inc	R0
-	mov	@R0, a
+	mov	@R0, #0x00
 
 	; Done extending, and we're at the end already so there's no
 	; need to jump.
