@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # test-runner.py - A script to run tests for the rv51 emulator.
-# Copyright (C) 2020-2021  Forest Crossman <cyrozap@gmail.com>
+# Copyright (C) 2020-2022  Forest Crossman <cyrozap@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 
 
 import argparse
+import multiprocessing
 import os
 import pathlib
 import struct
@@ -93,7 +94,8 @@ class RiscvTestsTestRunner:
     def __init__(self, rv_emulator):
         self.rv_emu = open(rv_emulator, 'rb').read()
 
-    def run_test(self, prefix, test):
+    def run_test(self, args):
+        ext, prefix, test = args
         # Create the temporary files for the emulator + RISC-V code binary.
         name_prefix = "rv51-test-runner-{}-combined.".format(test)
         combined_bin = tempfile.NamedTemporaryFile(prefix=name_prefix, suffix=".bin")
@@ -178,15 +180,15 @@ class RiscvTestsTestRunner:
         # If the emulator didn't print anything to the serial port, it's
         # probably hit an infinite loop somewhere.
         if len(result_code) < 1:
-            return "Timeout."
+            return ext, test, "Timeout."
 
         # The result code is ((test_number << 1) | 1).
         result_code = result_code[0]
         if result_code != 0:
             failed_test = (result_code >> 1) & 0xff
-            return "Test {}.".format(failed_test)
+            return ext, test, "Test {}.".format(failed_test)
 
-        return None
+        return ext, test, None
 
 
 def main():
@@ -200,17 +202,28 @@ def main():
 
     runner = RiscvTestsTestRunner(args.emulator)
 
-    errors = 0
-    for (isa_ext, isa) in INSTRUCTION_SETS.items():
-        if isa_ext not in extensions:
-            continue
-        isa_name = isa["name"]
+    max_name_len = 0
+    test_info = []
+
+    isas = filter(lambda extension: True if extension[0] in extensions else False, INSTRUCTION_SETS.items())
+    for (isa_ext, isa) in isas:
         tests = isa["tests"]
-        max_name_len = max(len(t) for t in tests)
-        print("{}:".format(isa_name))
-        for test in tests:
+        max_name_len = max(max(len(t) for t in tests), max_name_len)
+        test_info.extend(zip([isa_ext] * len(tests), [isa["prefix"]] * len(tests), tests))
+
+    errors = 0
+    extensions_handled = set()
+
+    processes = min(os.cpu_count() * 4, len(test_info))
+    with multiprocessing.Pool(processes) as pool:
+        tests = pool.imap(runner.run_test, test_info)
+
+        for ext, test, error in tests:
+            if ext not in extensions_handled:
+                print("{}:".format(INSTRUCTION_SETS[ext]["name"]))
+                extensions_handled.add(ext)
+
             padding = '.' * (3 + max_name_len - len(test))
-            error = runner.run_test(isa["prefix"], test)
             if error:
                 errors += 1
                 print("  {} {} FAIL - {}".format(test, padding, error))
@@ -218,9 +231,9 @@ def main():
                 print("  {} {} PASS".format(test, padding))
 
     if errors:
-        print("Error: Failed {} tests.".format(errors))
+        print("Error: Failed {} of {} tests.".format(errors, len(test_info)))
     else:
-        print("All tests passed!")
+        print("All {} tests passed!".format(len(test_info)))
 
     return errors
 
