@@ -144,8 +144,8 @@ decode_1:
 decode_2:
 	cjne	R2, #0x67, decode_3  ; JALR
 	lcall	extract_funct3
-	mov	R3, funct3
-	cjne	R3, #0, decode_3
+	mov	a, funct3
+	jnz	decode_3
 	ljmp	exec_jalr
 decode_3:
 	cjne	R2, #0x63, decode_4  ; BRANCH
@@ -171,8 +171,8 @@ decode_8:
 decode_9:
 	cjne	R2, #0x73, decode_10  ; SYSTEM
 	lcall	extract_funct3
-	mov	R3, funct3
-	cjne	R3, #0x00, exec_csr_op
+	mov	a, funct3
+	jnz	exec_csr_op
 	mov	a, instruction_2
 	jz	exec_ecall
 exec_ebreak:
@@ -215,7 +215,7 @@ exec_load:
 
 	; Return early if we're writing the zero register.
 	mov	a, rd
-	cjne	a, #0, exec_load_rd_not_zero
+	jnz	exec_load_rd_not_zero
 	ret
 
 exec_load_rd_not_zero:
@@ -1257,7 +1257,7 @@ exec_op_imm:
 
 	; Return early if we're writing the zero register.
 	mov	a, rd
-	cjne	a, #0, exec_op_imm_rd_not_zero
+	jnz	exec_op_imm_rd_not_zero
 	ret
 
 exec_op_imm_rd_not_zero:
@@ -1654,7 +1654,7 @@ exec_op:
 
 	; Return early if we're writing the zero register.
 	mov	a, rd
-	cjne	a, #0, exec_op_rd_not_zero
+	jnz	exec_op_rd_not_zero
 	ret
 
 exec_op_rd_not_zero:
@@ -3065,7 +3065,7 @@ exec_auipc:
 
 	; Return early if we're writing the zero register.
 	mov	a, rd
-	cjne	a, #0, exec_auipc_rd_not_zero
+	jnz	exec_auipc_rd_not_zero
 	ret
 
 exec_auipc_rd_not_zero:
@@ -3101,7 +3101,7 @@ exec_lui:
 
 	; Return early if we're writing the zero register.
 	mov	a, rd
-	cjne	a, #0, exec_lui_rd_not_zero
+	jnz	exec_lui_rd_not_zero
 	ret
 
 exec_lui_rd_not_zero:
