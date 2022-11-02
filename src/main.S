@@ -1341,7 +1341,11 @@ exec_slli:
 
 	; Skip shifting if the shift is zero.
 	mov	a, immediate_0
+	anl	a, #0x1F
 	jz	exec_slli_shift_is_zero
+
+	; Save the shift amount in R2.
+	mov	R2, a
 
 exec_slli_loop:
 	clr	c
@@ -1357,7 +1361,7 @@ exec_slli_loop:
 	mov	a, rs1_dat3
 	rlc	a
 	mov	rs1_dat3, a
-	djnz	immediate_0, exec_slli_loop
+	djnz	R2, exec_slli_loop
 
 exec_slli_shift_is_zero:
 	mov	@R0, rs1_dat0
@@ -1524,6 +1528,10 @@ exec_srli_srai:
 	anl	a, #0x1F
 	jz	exec_srli_srai_done
 
+	; Save the shift amount in R2.
+	mov	R2, a
+
+	; Jump if this is an arithmetic right shift.
 	jb	(((instruction_0 - 0x20) * 8) + 30), exec_srli_srai_arith
 
 exec_srli_srai_loop:
@@ -1540,7 +1548,7 @@ exec_srli_srai_loop:
 	mov	a, rs1_dat0
 	rrc	a
 	mov	rs1_dat0, a
-	djnz	immediate_0, exec_srli_srai_loop
+	djnz	R2, exec_srli_srai_loop
 	sjmp	exec_srli_srai_done
 
 exec_srli_srai_arith:
@@ -1564,7 +1572,7 @@ exec_srli_srai_loop_arith:
 	mov	a, rs1_dat0
 	rrc	a
 	mov	rs1_dat0, a
-	djnz	immediate_0, exec_srli_srai_loop_arith
+	djnz	R2, exec_srli_srai_loop_arith
 
 	; Fall through when done.
 
