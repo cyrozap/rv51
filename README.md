@@ -88,16 +88,46 @@ in the [examples][examples] directory.
 
 The target 8051-family microcontroller must have at least 256 bytes of
 internal data memory, since the emulator uses the upper 128 bytes as the
-register file.
+register file. And while having some additional XDATA-attached RAM is not
+strictly required, operating exclusively on registers will severely limit the
+kinds of RISC-V code that can be built and executed (no global variables, no
+nested function calls, and no stack usage in general).
 
-This emulator is only meant to support the RV32IM instruction set, and maybe
-the "C" extension if it's not too difficult to implement. 64-bit and floating
-point support will never be added, since both would require too much memory
-and the hardware doesn't have floating point support.
+Only the RV32IM instruction set is supported at this time. Support for the "C"
+extension may be added if it's not too difficult to implement and doesn't
+require much additional code and data memory. Support for 64-bit (RV64I) and
+floating point (the "F" extension) will never be added, for the following
+reasons:
+
+* Both instructions sets would require more internal memory than is available
+  in the 8051.
+  * The RV64I registers would take up at least 248 bytes of internal data
+    memory, leaving only 8 bytes for a stack and temporary values.
+  * The "F" Standard Extension adds 32 32-bit floating point registers, plus a
+    32-bit floating point control and status register, so at least 128 bytes
+    of internal data memory would be required to store those registers.
+* 64-bit operations are _extremely slow_ on the 8051.
+  * Assuming there was enough space somewhere for the 248-byte register file,
+    64-bit operations would take twice as long for the 8051 to emulate as the
+    equivalent 32-bit instructions while providing little-to-no benefit on
+    common microcontroller tasks.
+* The marginal gains of implementing those instruction sets is far outweighed
+  by the marginal cost of implementing them, in terms of how much data and
+  code memory would be required.
+  * Going from "not being able to execute any RISC-V instructions at all" to
+    "being able to execute any RV32I instruction" is a huge leap in
+    functionality. And in addition to significantly speeding up multiply and
+    divide operations, support for the "M" extension is required in order to
+    use Rust toolchains that emit compressed instructions
+    (`riscv32imc-unknown-none-elf` and `riscv32imac-unknown-none-elf`).
+    Compared to those, floating point and 64-bit support are simultaneously
+    much more costly to implement and much less useful than those other
+    extensions, at least for applications where an 8051 might being used.
 
 All 40 instructions of the RV32I Base Instruction Set and all eight
-instructions of the RV32M Standard Extension have been implemented. You can
-see instruction support status in [Instruction Support][isa-support].
+instructions of the RV32M Standard Extension have been implemented. The full
+list of supported instructions can be found in [Instruction
+Support][isa-support].
 
 Interrupts are not yet supported, nor is the rest of machine-mode (M-mode).
 
