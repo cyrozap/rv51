@@ -3,8 +3,9 @@
 
 ## What is this?
 
-rv51 is an emulator that can execute bare-metal RV32I binaries on most 8051
-(MCS-51) and similar microcontrollers.
+rv51 is an emulator that can execute bare-metal [RISC-V][risc-v] RV32IM
+firmware on microcontrollers that use the [8051 (MCS-51)][8051] instruction
+set.
 
 
 ## But why?
@@ -107,12 +108,12 @@ This software is licensed under the [GNU General Public License, version 3 or
 later][gpl].
 
 
+[risc-v]: https://en.wikipedia.org/wiki/RISC-V
 [8051]: https://en.wikipedia.org/wiki/Intel_MCS-51
 [sdcc]: http://sdcc.sourceforge.net/
 [gcc]: https://gcc.gnu.org/
 [llvm]: https://llvm.org/
 [rust]: https://www.rust-lang.org/
-[risc-v]: https://riscv.org/
 [vmu]: https://dmitry.gr/?r=05.Projects&proj=25.%20VMU%20Hacking
 [examples]: examples
 [isa-support]: doc/Instruction-Support.md
