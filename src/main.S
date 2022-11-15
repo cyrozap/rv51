@@ -1348,9 +1348,8 @@ exec_slli:
 	mov	R2, a
 
 exec_slli_loop:
-	clr	c
 	mov	a, rs1_dat0
-	rlc	a
+	add	a, rs1_dat0
 	mov	rs1_dat0, a
 	mov	a, rs1_dat1
 	rlc	a
@@ -1936,9 +1935,8 @@ exec_sll:
 	mov	R2, a
 
 exec_sll_loop:
-	clr	c
 	mov	a, rs1_dat0
-	rlc	a
+	add	a, rs1_dat0
 	mov	rs1_dat0, a
 	mov	a, rs1_dat1
 	rlc	a
