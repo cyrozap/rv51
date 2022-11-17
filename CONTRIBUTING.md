@@ -37,11 +37,13 @@ rejected.
 
 ## Contribution process
 
-1. Search through both [open and closed issues][all-issues] to make sure that
+1. Check the [Project scope](#project-scope) to make sure your idea is either
+   in-scope or at least is not out-of-scope.
+2. Search through both [open and closed issues][all-issues] to make sure that
    what you're about to ask hasn't already been asked about.
-2. [Open an issue][new-issue] in this repository explaining the kind of change
+3. [Open an issue][new-issue] in this repository explaining the kind of change
    you would like to make.
-3. [@cyrozap][cyrozap] will inform you in the issue of any next steps to take.
+4. [@cyrozap][cyrozap] will inform you in the issue of any next steps to take.
 
 
 ## Code design guidelines
@@ -64,6 +66,65 @@ rejected.
     should or should not have comments.
 
 
+## Project scope
+
+
+### In scope
+
+Some suggestions for implementation are included.
+
+- RISC-V C-extension (compressed instructions)
+  - To start, all compressed instructions must be decompressed into 4-byte
+    instructions before returning to the standard instruction emulation code.
+  - Optimizations (such as skipping decompression steps, pre-decoding before
+    jumping directly to emulation code, and performing the instruction emulation
+    directly while decoding the compressed instruction) can be made after the
+    initial, less-optimized support is added.
+- RISC-V M-mode (privileged architecture)
+  - `misa` CSR
+  - `mhartid` CSR
+  - Interrupts
+    - `mstatus` CSR
+    - `mtvec` CSR
+    - `mip` CSR
+    - `mie` CSR
+    - `mepc` CSR
+    - `mcause` CSR
+  - Performance Monitor
+    - `minstret` CSR
+    - `mcounteren` CSR
+    - `mcountinhibit` CSR
+  - MRET instruction
+
+
+### Out of scope
+
+This is not an exhaustive list, but it should at least give you an idea of the
+kinds of functionality that will probably never be included in rv51.
+
+- RISC-V RV64 instruction set (64-bit operations)
+  - See [the limitations section in README.md][limitations] for the reasons why
+    this won't be included.
+- RISC-V F/D/Q/L-extension
+  (single-precision/double-precision/quad-precision/decimal floating point)
+  - See [the limitations section in README.md][limitations] for the reasons why
+    this won't be included.
+- Bootloader to dynamically load RISC-V code
+  - There are simply too many potential platforms and use cases to make
+    supporting this feasible. For example, many 8051-based microcontrollers use
+    the standard 8051 serial port peripheral, but some use memory-mapped
+    8250-style UARTs in XDATA space. And while many users might want to load
+    code over serial, others might want to load it over SPI, I2C, or even USB or
+    PCIe, depending on what peripherals are available on their target
+    microcontroller and their target application.
+- Porting to specific platforms (e.g., adding support for non-standard
+  peripherals in SFR or XDATA space, extended addressing modes, firmware
+  headers, etc.)
+  - There's simply too many platforms to support, and making the build
+    configurable would make it very difficult to test everything due to the
+    large number of possible configuration combinations.
+
+
 [rv51]: https://github.com/cyrozap/rv51
 [cyrozap]: https://github.com/cyrozap
 [free-software]: https://www.gnu.org/philosophy/free-sw.html
@@ -72,3 +133,4 @@ rejected.
 [new-issue]: https://github.com/cyrozap/rv51/issues/new
 [main]: src/main.S
 [regmap]: doc/Register-Mapping.ods
+[limitations]: README.md#what-are-the-limitations
