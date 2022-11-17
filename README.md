@@ -130,6 +130,10 @@ list of supported instructions can be found in [Instruction
 Support][isa-support].
 
 Interrupts are not yet supported, nor is the rest of machine-mode (M-mode).
+Because of this, an illegal instruction will put rv51 into an infinite loop
+instead of raising an illegal instruction exception. Please be sure your
+RISC-V code doesn't try to execute any instructions that are unsupported by
+rv51.
 
 
 ## What's the license?
