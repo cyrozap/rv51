@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-riscv = "0.7.0"
-riscv-rt = "0.8.1"
+riscv = "0.9.0"
+riscv-rt = "0.10.0"
 volatile-register = "0.2.1"
