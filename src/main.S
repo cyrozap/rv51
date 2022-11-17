@@ -143,7 +143,7 @@ decode_1:
 decode_2:
 	cjne	R2, #0x67, decode_3  ; JALR
 	lcall	extract_funct3
-	mov	a, funct3
+	; funct3 is now also in A
 	jnz	decode_3
 	ljmp	exec_jalr
 decode_3:
@@ -170,7 +170,7 @@ decode_8:
 decode_9:
 	cjne	R2, #0x73, decode_10  ; SYSTEM
 	lcall	extract_funct3
-	mov	a, funct3
+	; funct3 is now also in A
 	jnz	exec_csr_op
 	mov	a, instruction_2
 	jz	exec_ecall
