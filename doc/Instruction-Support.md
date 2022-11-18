@@ -57,6 +57,16 @@
 - [x] REMU
 
 
+## RV32 Zicsr Standard Extension
+
+- [x] CSRRW
+- [x] CSRRS
+- [x] CSRRC
+- [x] CSRRWI
+- [x] CSRRSI
+- [x] CSRRCI
+
+
 ## RV32C Standard Extension
 
 - [ ] C.LWSP

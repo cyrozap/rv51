@@ -39,6 +39,33 @@ rv_rom_base = 0x80000000
 rv_sfr_base = 0xC0000000
 rv_hyp_base = 0xE0000000
 
+; CSR addresses
+rv_csr_addr_mvendorid = 0xF11
+rv_csr_addr_marchid = 0xF12
+rv_csr_addr_mimpid = 0xF13
+rv_csr_addr_mhartid = 0xF14
+
+rv_csr_addr_mstatus = 0x300
+rv_csr_addr_misa = 0x301
+rv_csr_addr_mie = 0x304
+rv_csr_addr_mtvec = 0x305
+rv_csr_addr_mcounteren = 0x306
+
+rv_csr_addr_mscratch = 0x340
+rv_csr_addr_mepc = 0x341
+rv_csr_addr_mcause = 0x342
+rv_csr_addr_mip = 0x344
+
+rv_csr_addr_minstret = 0xB02
+rv_csr_addr_mcountinhibit = 0x320
+
+; CSR read-only values
+rv_csr_val_mvendorid = 0x00000000
+rv_csr_val_marchid = 0x00000000
+rv_csr_val_mimpid = 0x00000000
+rv_csr_val_mhartid = 0x00000000
+rv_csr_val_misa = ((1 << 30) | (1 << 12) | (1 << 8))
+
 ; Global variables
 instruction_0	= 0x20
 instruction_1	= 0x21
@@ -69,6 +96,16 @@ rv_pc_0	= 0x3C
 rv_pc_1	= 0x3D
 curr_pc_dptr_0	= 0x3E
 curr_pc_dptr_1	= 0x3F
+rv_csr_mepc_0 = 0x40
+rv_csr_mepc_1 = 0x41
+rv_csr_mtvec_0 = 0x42
+rv_csr_mtvec_1 = 0x43
+rv_csr_mcause = 0x44
+rv_csr_mscratch_0 = 0x48
+rv_csr_mscratch_1 = 0x49
+rv_csr_mscratch_2 = 0x4A
+rv_csr_mscratch_3 = 0x4B
+stack_base = 0x4C
 rv_x0	= 0x80
 
 	.area	XSEG	(XDATA)
@@ -81,7 +118,7 @@ reset:
 
 init:
 	; Set stack pointer to scratch pad area.
-	mov	sp, #(0x40-1)
+	mov	sp, #(stack_base-1)
 	; Use register bank zero.
 	anl	psw, #(~((1 << 4) | (1 << 3)))
 	; Use dptr as the RV's PC, offset by #rv_code.
@@ -181,9 +218,7 @@ exec_ebreak:
 	nop
 	ret
 exec_csr_op:
-	; Treat CSR operations as no-ops for now.
-	; TODO: Implement CSR operations.
-	ret
+	ljmp	exec_csr_op_impl
 decode_10:
 	; Unrecognized instruction or execution function didn't "ret".
 	sjmp	.
@@ -3418,6 +3453,312 @@ extract_rd:
 	; Copy the result to rd.
 	mov	rd, a
 
+	ret
+
+exec_csr_op_impl:
+	; アイ・アム・アトミック
+
+	; Extract instruction fields.
+	lcall	extract_rd
+	lcall	extract_rs1
+	lcall	extract_imm_11_0
+
+	; Fixup the immediate because we didn't need the sign-extension.
+	anl	immediate_1, #0x0F
+
+	; funct3 is guaranteed to be in the range of [1, 7]. We handle
+	; both immediate and non-immediate forms of the instructions in
+	; the same functions, and set/clear in the same function, so
+	; clear bits 2 and 0 to fix the comparisons.
+	mov	a, funct3
+	anl	a, #(~((1 << 2) | (1 << 0)))
+
+	jnz	exec_csrrs_csrrsi_csrrc_csrrci  ; CSRRS/CSRRSI/CSRRC/CSRRCI
+
+	; Fallthrough to CSRRW/CSRRWI
+
+exec_csrrw_csrrwi:
+	; Load the data from rs1/uimm into rs1_dat[0-3].
+	lcall	exec_csr_op_load_rs1_uimm_data
+
+	; If rd is zero, we don't read the CSR before writing to it.
+	mov	a, rd
+	jz	1$
+
+	; Read the CSR and store the value in register rd.
+	lcall	csr_read_internal
+	lcall	csr_commit_rd
+
+1$:
+	; Write the data from rs1/uimm in rs1_dat[0-3] to the CSR.
+	lcall	csr_write
+
+	ret
+
+exec_csrrs_csrrsi_csrrc_csrrci:
+	; If rs1/uimm is zero, we don't write to the CSR after reading
+	; it, so we don't need to load that zero data.
+	mov	a, rs1
+	jz	1$
+
+	; Load the data from rs1/uimm into rs1_dat[0-3].
+	lcall	exec_csr_op_load_rs1_uimm_data
+
+1$:
+	; Always read the CSR.
+	lcall	csr_read_internal
+
+	; If rd is zero, we don't store the value of the CSR.
+	mov	a, rd
+	jz	2$
+
+	; Store the value of the CSR in register rd.
+	lcall	csr_commit_rd
+
+2$:
+	; If rs1/uimm is zero, we don't write to the CSR after reading
+	; it, so we can return early.
+	mov	a, rs1
+	jnz	3$
+
+	ret
+
+3$:
+	; Bit 0 of funct3 indicates that we should clear bits in the CSR
+	; instead of setting them.
+	funct3_bit_0__clear_not_set = (((funct3 - 0x20) * 8) + 0)
+
+	; Check if we're clearing or setting bits.
+	jb	funct3_bit_0__clear_not_set, 4$
+
+	; Set the bits in the CSR value as indicated in rs1_dat[0-3],
+	; and store the result to rs1_dat[0-3].
+	mov	a, rd_dat0
+	orl	rs1_dat0, a
+	mov	a, rd_dat1
+	orl	rs1_dat1, a
+	mov	a, rd_dat2
+	orl	rs1_dat2, a
+	mov	a, rd_dat3
+	orl	rs1_dat3, a
+
+	; Write the updated CSR value to the CSR.
+	lcall	csr_write
+
+	ret
+
+4$:
+	; Clear the bits in the CSR value as indicated in rs1_dat[0-3],
+	; and store the result to rs1_dat[0-3].
+	xrl	rs1_dat0, #0xFF
+	xrl	rs1_dat1, #0xFF
+	xrl	rs1_dat2, #0xFF
+	xrl	rs1_dat3, #0xFF
+
+	mov	a, rd_dat0
+	anl	rs1_dat0, a
+	mov	a, rd_dat1
+	anl	rs1_dat1, a
+	mov	a, rd_dat2
+	anl	rs1_dat2, a
+	mov	a, rd_dat3
+	anl	rs1_dat3, a
+
+	; Write the updated CSR value to the CSR.
+	lcall	csr_write
+
+	ret
+
+exec_csr_op_load_rs1_uimm_data:
+	; Bit 2 of funct3 indicates that we should treat rs1 as a
+	; zero-extended immediate instead of a register number.
+	funct3_bit_2__rs1_is_uimm_4_0 = (((funct3 - 0x20) * 8) + 2)
+
+	; Check if we're using rs1 as an immediate.
+	jb	funct3_bit_2__rs1_is_uimm_4_0, 1$
+
+	; Load the data from rs1 into rs1_dat[0-3].
+	lcall	set_src_to_rs1_iram_addr
+	mov	rs1_dat0, @R1
+	inc	R1
+	mov	rs1_dat1, @R1
+	inc	R1
+	mov	rs1_dat2, @R1
+	inc	R1
+	mov	rs1_dat3, @R1
+
+	ret
+
+1$:
+	; Load the register number rs1 as an unsigned immediate into rs1_dat[0-3].
+	mov	rs1_dat0, rs1
+	clr	a
+	mov	rs1_dat1, a
+	mov	rs1_dat2, a
+	mov	rs1_dat3, a
+
+	ret
+
+csr_read_internal:
+	; Read CSR address into R6 and R7.
+	mov	R6, immediate_0
+	mov	R7, immediate_1
+
+	; mcause
+	cjne	R6, #(rv_csr_addr_mcause), 1$
+	cjne	R7, #(rv_csr_addr_mcause >> 8), 1$
+
+	; Extract mcause CSR value (stored as mcause[31]|mcause[6:0]).
+	mov	a, rv_csr_mcause
+	clr	c
+	rlc	a
+	rr	a
+	mov     rd_dat0, a
+	clr	a
+	mov     rd_dat1, a
+	mov     rd_dat2, a
+	rrc	a
+	mov     rd_dat3, a
+
+	ret
+
+1$:
+	; mscratch
+	cjne	R6, #(rv_csr_addr_mscratch), 2$
+	cjne	R7, #(rv_csr_addr_mscratch >> 8), 2$
+
+	mov	rd_dat0, rv_csr_mscratch_0
+	mov	rd_dat1, rv_csr_mscratch_1
+	mov	rd_dat2, rv_csr_mscratch_2
+	mov	rd_dat3, rv_csr_mscratch_3
+
+	ret
+
+2$:
+	; misa
+	cjne	R6, #(rv_csr_addr_misa), 3$
+	cjne	R7, #(rv_csr_addr_misa >> 8), 3$
+
+	mov	rd_dat0, #(rv_csr_val_misa)
+	mov	rd_dat1, #(rv_csr_val_misa >> 8)
+	mov	rd_dat2, #(rv_csr_val_misa >> 16)
+	mov	rd_dat3, #(rv_csr_val_misa >> 24)
+
+	ret
+
+3$:
+	; mtvec
+	cjne	R6, #(rv_csr_addr_mtvec), 4$
+	cjne	R7, #(rv_csr_addr_mtvec >> 8), 4$
+
+	mov	rd_dat0, rv_csr_mtvec_0
+	mov	rd_dat1, rv_csr_mtvec_1
+	mov	rd_dat2, #(rv_rom_base >> 16)
+	mov	rd_dat3, #(rv_rom_base >> 24)
+
+	ret
+
+4$:
+	; mepc
+	cjne	R6, #(rv_csr_addr_mepc), 5$
+	cjne	R7, #(rv_csr_addr_mepc >> 8), 5$
+
+	mov	rd_dat0, rv_csr_mepc_0
+	mov	rd_dat1, rv_csr_mepc_1
+	mov	rd_dat2, #(rv_rom_base >> 16)
+	mov	rd_dat3, #(rv_rom_base >> 24)
+
+	ret
+
+5$:
+	; mvendorid
+	; marchid
+	; mimpid
+	; mhartid
+
+	; Default case, return zero.
+	clr	a
+	mov	rd_dat0, a
+	mov	rd_dat1, a
+	mov	rd_dat2, a
+	mov	rd_dat3, a
+
+	ret
+
+csr_commit_rd:
+	; Load the dst address into R0.
+	lcall	set_dst_to_rd_iram_addr
+
+	; Commit the CSR data to rd.
+	mov	@R0, rd_dat0
+	inc	R0
+	mov	@R0, rd_dat1
+	inc	R0
+	mov	@R0, rd_dat2
+	inc	R0
+	mov	@R0, rd_dat3
+
+	ret
+
+csr_write:
+	; Read CSR address into R6 and R7.
+	mov	R6, immediate_0
+	mov	R7, immediate_1
+
+	; mtvec
+	cjne	R6, #(rv_csr_addr_mtvec), 1$
+	cjne	R7, #(rv_csr_addr_mtvec >> 8), 1$
+
+	mov	rv_csr_mtvec_0, rs1_dat0
+	mov	rv_csr_mtvec_1, rs1_dat1
+
+	ret
+
+1$:
+	; mepc
+	cjne	R6, #(rv_csr_addr_mepc), 2$
+	cjne	R7, #(rv_csr_addr_mepc >> 8), 2$
+
+	mov	rv_csr_mepc_0, rs1_dat0
+	mov	rv_csr_mepc_1, rs1_dat1
+
+	ret
+
+2$:
+	; mscratch
+	cjne	R6, #(rv_csr_addr_mscratch), 3$
+	cjne	R7, #(rv_csr_addr_mscratch >> 8), 3$
+
+	mov	rv_csr_mscratch_0, rs1_dat0
+	mov	rv_csr_mscratch_1, rs1_dat1
+	mov	rv_csr_mscratch_2, rs1_dat2
+	mov	rv_csr_mscratch_3, rs1_dat3
+
+	ret
+
+3$:
+	; mcause
+	cjne	R6, #(rv_csr_addr_mcause), 4$
+	cjne	R7, #(rv_csr_addr_mcause >> 8), 4$
+
+	; Compress mcause CSR value (stored as mcause[31]|mcause[6:0]).
+	mov	a, rs1_dat3
+	rlc	a
+	mov	a, rs1_dat0
+	rl	a
+	rrc	a
+	mov	rv_csr_mcause, a
+
+	ret
+
+4$:
+	; mvendorid
+	; marchid
+	; mimpid
+	; mhartid
+	; misa
+
+	; Default case, no-op.
 	ret
 
 emulator_size:

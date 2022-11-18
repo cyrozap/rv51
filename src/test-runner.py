@@ -87,6 +87,14 @@ INSTRUCTION_SETS = {
             "remu",
         ],
     },
+    "Zicsr": {
+        "name": "RV32 Zicsr Standard Extension",
+        "prefix": "rv32mi",
+        "tests": [
+            "csr",
+            "mcsr",
+        ],
+    },
 }
 
 
