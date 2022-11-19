@@ -3613,12 +3613,12 @@ csr_read_internal:
 	clr	c
 	rlc	a
 	rr	a
-	mov     rd_dat0, a
+	mov	rd_dat0, a
 	clr	a
-	mov     rd_dat1, a
-	mov     rd_dat2, a
+	mov	rd_dat1, a
+	mov	rd_dat2, a
 	rrc	a
-	mov     rd_dat3, a
+	mov	rd_dat3, a
 
 	ret
 
