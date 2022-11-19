@@ -209,14 +209,41 @@ decode_9:
 	lcall	extract_funct3
 	; funct3 is now also in A
 	jnz	exec_csr_op
+
 	mov	a, instruction_2
-	jz	exec_ecall
-exec_ebreak:
-	; EBREAK is a no-op, but with an explicit "nop" instruction so
-	; we can both easily break on it in an 8051 debugger while
-	; ignoring it on real hardware.
-	nop
+	cjne	a, #0x00, 1$
+	mov	a, instruction_3
+	cjne	a, #0x00, .
+	sjmp	exec_ecall
+1$:
+	cjne	a, #0x10, 2$
+	mov	a, instruction_3
+	cjne	a, #0x00, .
+	sjmp	exec_ebreak
+2$:
+	cjne	a, #0x20, .
+	mov	a, instruction_3
+	cjne	a, #0x30, .
+	; Fallthrough to MRET
+
+exec_mret:
+	; Set the RISC-V PC to the value in mepc.
+	mov	a, rv_csr_mepc_0
+	add	a, #(rv_code)
+	mov	dpl, a
+	mov	a, rv_csr_mepc_1
+	addc	a, #(rv_code >> 8)
+	mov	dph, a
+
 	ret
+
+exec_ebreak:
+	; Save the exception reason ("Breakpoint") in the mcause CSR.
+	mov	rv_csr_mcause, #((0 << 7) | 3)
+
+	; Prepare the jump to the trap handler.
+	ljmp	prepare_jump_to_synchronous_trap
+
 exec_csr_op:
 	ljmp	exec_csr_op_impl
 decode_10:
@@ -227,8 +254,8 @@ exec_ecall:
 	mov	R1, #(0x80 + (4 * 17))  ; Syscall number is in register a7 (x17).
 	mov	a, @R1
 
-	; Only support "exit" syscall.
-	cjne	a, #93, exec_ecall_done
+	; Only directly handle the "exit" syscall.
+	cjne	a, #93, exec_ecall_exception
 
 	mov	R1, #(0x80 + (4 * 10))  ; Exit retval is in register a0 (x10).
 	mov	a, @R1
@@ -241,8 +268,13 @@ exec_ecall:
 	; the RV registers, too.
 	sjmp	.
 
-exec_ecall_done:
-	ret
+exec_ecall_exception:
+	; Save the exception reason ("Environment call from M-mode") in
+	; the mcause CSR.
+	mov	rv_csr_mcause, #((0 << 7) | 11)
+
+	; Prepare the jump to the trap handler.
+	ljmp	prepare_jump_to_synchronous_trap
 
 exec_load:
 	lcall	extract_rd
@@ -3744,6 +3776,28 @@ csr_write:
 	; misa
 
 	; Default case, no-op.
+	ret
+
+prepare_jump_to_synchronous_trap:
+	; Calculate the RISC-V PC for the EBREAK/ECALL instruction and
+	; save it in the mepc CSR.
+	mov	a, curr_pc_dptr_0
+	clr	c
+	subb	a, #(rv_code)
+	mov	rv_csr_mepc_0, a
+	mov	a, curr_pc_dptr_1
+	subb	a, #(rv_code >> 8)
+	mov	rv_csr_mepc_1, a
+
+	; Set the RISC-V PC to the trap vector base address in mtvec.
+	mov	a, rv_csr_mtvec_0
+	anl	a, #0xFC
+	add	a, #(rv_code)
+	mov	dpl, a
+	mov	a, rv_csr_mtvec_1
+	addc	a, #(rv_code >> 8)
+	mov	dph, a
+
 	ret
 
 emulator_size:
