@@ -101,6 +101,7 @@ rv_csr_mepc_1 = 0x41
 rv_csr_mtvec_0 = 0x42
 rv_csr_mtvec_1 = 0x43
 rv_csr_mcause = 0x44
+rv_csr_mip_mie = 0x45
 rv_csr_mscratch_0 = 0x48
 rv_csr_mscratch_1 = 0x49
 rv_csr_mscratch_2 = 0x4A
@@ -123,13 +124,20 @@ init:
 	anl	psw, #(~((1 << 4) | (1 << 3)))
 	; Use dptr as the RV's PC, offset by #rv_code.
 	mov	dptr, #(rv_code)
-	; Zero all RV registers. This is necessary for x0 since we don't
-	; currently treat reads from it as a special case. And while
-	; this isn't necessary for the other registers, doing this here
-	; means the RV code won't have to (slowly) zero registers when
-	; it starts, resulting in a slightly faster RV application
-	; startup time.
-	mov	R0, #rv_x0
+	; Zero all emulator state, including RISC-V CSRs and registers.
+	; - CSRs must be cleared since most of the set-by-hardware-only
+	;   registers are assumed to be zero on reset, and we can't
+	;   otherwise clear them with CSR operations.
+	; - x0 must be cleared since we don't treat reads from it as a
+	;   special case.
+	; - Clearing x1-x31 isn't strictly necessary, but doing this
+	;   here means the RISC-V code won't have to (slowly) zero
+	;   registers when it starts, resulting in a slightly faster
+	;   RISC-V application startup time.
+	; - Clearing the stack also isn't necessary, but there's not
+	;   much reason to avoid doing so other than a slight speedup in
+	;   startup time.
+	mov	R0, #0x01
 zero_rv_regs:
 	mov	@R0, #0
 	inc	R0
@@ -3688,6 +3696,50 @@ csr_read_internal:
 	ret
 
 5$:
+	; mie
+	cjne	R6, #(rv_csr_addr_mie), 6$
+	cjne	R7, #(rv_csr_addr_mie >> 8), 6$
+
+	; Extract mie CSR value (stored as
+	; 0|mip[11]|mip[7]|mie[11]|mie[7] in rv_csr_mip_mie).
+	mov	a, rv_csr_mip_mie  ; ? is in C, 0[7:4]|mip[11]|mip[7]|mie[11]|mie[7] is in A.
+	rrc	a  ; mie[7] is in C, ?[7]|0[6:3]|mip[11]|mip[7]|mie[11] is in A.
+	rrc	a  ; mie[11] is in C, mie[7]|?[6]|0[5:2]|mip[11]|mip[7] is in A.
+	anl	a, #0x80  ; mie[11] is in C, mie[7]|0[6:0] is in A.
+	mov	rd_dat0, a
+	clr	a  ; mie[11] is in C, 0 is in A.
+	rrc	a  ; 0 is in C, mie[11]|0[6:0] is in A.
+	swap	a  ; 0 is in C, 0[7:4]|mie[11]|0[2:0] is in A.
+	mov	rd_dat1, a
+	clr	a
+	mov	rd_dat2, a
+	mov	rd_dat3, a
+
+	ret
+
+6$:
+	; mip
+	cjne	R6, #(rv_csr_addr_mip), 7$
+	cjne	R7, #(rv_csr_addr_mip >> 8), 7$
+
+	; Extract mip CSR value (stored as
+	; 0|mip[11]|mip[7]|mie[11]|mie[7] in rv_csr_mip_mie).
+	mov	a, rv_csr_mip_mie  ; ? is in C, 0[7:4]|mip[11]|mip[7]|mie[11]|mie[7] is in A.
+	swap	a  ; ? is in C, mip[11]|mip[7]|mie[11]|mie[7]|0[3:0] is in A.
+	rlc	a  ; mip[11] is in C, mip[7]|mie[11]|mie[7]|0[4:1]|?[0] is in A.
+	anl	a, #0x80  ; mip[11] is in C, mip[7]|0[6:0] is in A.
+	mov	rd_dat0, a
+	clr	a  ; mip[11] is in C, 0 is in A.
+	rrc	a  ; 0 is in C, mip[11]|0[6:0] is in A.
+	swap	a  ; 0 is in C, 0[7:4]|mip[11]|0[2:0] is in A.
+	mov	rd_dat1, a
+	clr	a
+	mov	rd_dat2, a
+	mov	rd_dat3, a
+
+	ret
+
+7$:
 	; mvendorid
 	; marchid
 	; mimpid
@@ -3769,11 +3821,30 @@ csr_write:
 	ret
 
 4$:
+	; mie
+	cjne	R6, #(rv_csr_addr_mie), 5$
+	cjne	R7, #(rv_csr_addr_mie >> 8), 5$
+
+	; Compress mie CSR value (stored as
+	; 0|mip[11]|mip[7]|mie[11]|mie[7] in rv_csr_mip_mie).
+	; NOTE: mtime and mtimecmp are not supported, so writes to MTIE
+	;       (mie[7]) have been disabled.
+	anl	rv_csr_mip_mie, #~((1 << 1) | (0 << 0))
+	mov	a, rs1_dat1  ; mie[15:12]|mie[11]|mie[10:8] is in A.
+	rr	a  ; mie[8]|mie[15:12]|mie[11]|mie[10:9] is in A.
+	rr	a  ; mie[9:8]|mie[15:12]|mie[11]|mie[10] is in A.
+	anl	a, #(1 << 1)  ; 0[7:2]|mie[11]|0[0] is in A.
+	orl	rv_csr_mip_mie, a
+
+	ret
+
+5$:
 	; mvendorid
 	; marchid
 	; mimpid
 	; mhartid
 	; misa
+	; mip (MEIP/MTIP are read-only)
 
 	; Default case, no-op.
 	ret
