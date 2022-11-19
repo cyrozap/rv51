@@ -3152,47 +3152,32 @@ exec_lui_rd_not_zero:
 
 	ret
 
-set_dst_to_rd_iram_addr:
+.macro	get_rv_reg_iram_addr	ptr, reg_num
 	; Load the register number into A.
-	mov	a, rd
+	mov	a, reg_num
 
 	; Multiply the RV reg number by 4 to get the IRAM offset.
 	rl	a
 	rl	a
 
-	; Add 0x80 to get the offset in the upper IRAM registers.
-	add	a, #0x80
+	; Add the IRAM address of RISC-V register x0 to get the IRAM
+	; address of the RISC-V register.
+	add	a, #rv_x0
 
-	; Set the destination address to the final register offset.
-	mov	R0, a
+	; Set the pointer to the IRAM address of the RISC-V register.
+	mov	ptr, a
 
 	ret
+.endm
+
+set_dst_to_rd_iram_addr:
+	get_rv_reg_iram_addr	R0, rd
 
 set_src_to_rs2_iram_addr:
-	; Load the register number into A.
-	mov	a, rs2
-
-	; Jump to the common routine.
-	sjmp	set_src_to_rsN_iram_addr
+	get_rv_reg_iram_addr	R1, rs2
 
 set_src_to_rs1_iram_addr:
-	; Load the register number into A.
-	mov	a, rs1
-
-	; Fall through to the common routine.
-
-set_src_to_rsN_iram_addr:
-	; Multiply the RV reg number by 4 to get the IRAM offset.
-	rl	a
-	rl	a
-
-	; Add 0x80 to get the offset in the upper IRAM registers.
-	add	a, #0x80
-
-	; Set the source address to the final register offset.
-	mov	R1, a
-
-	ret
+	get_rv_reg_iram_addr	R1, rs1
 
 rv_calc_curr_pc:
 	mov	a, curr_pc_dptr_0
