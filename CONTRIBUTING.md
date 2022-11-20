@@ -102,13 +102,37 @@ Some suggestions for implementation are included.
 This is not an exhaustive list, but it should at least give you an idea of the
 kinds of functionality that will probably never be included in rv51.
 
-- RISC-V RV64 instruction set (64-bit operations)
-  - See [the limitations section in README.md][limitations] for the reasons why
-    this won't be included.
-- RISC-V F/D/Q/L-extension
+- RISC-V RV64 instruction set (64-bit operations) and F/D/Q/L-extensions
   (single-precision/double-precision/quad-precision/decimal floating point)
-  - See [the limitations section in README.md][limitations] for the reasons why
-    this won't be included.
+  - Support for RV64I would take up more internal memory than is available in
+    the 8051. The registers themselves would require at least 248 bytes of
+    internal data memory in total, leaving only 8 bytes for a stack and other
+    emulator state, which is not nearly enough.
+    - In theory, the registers could be stored in XDATA-attached RAM, but the
+      presence, size, and base address of this RAM is platform-dependent and
+      would require a significant rewrite of rv51.
+  - The "F" Standard Extension adds 32 32-bit floating point registers, plus a
+    32-bit floating point control and status register, so at least 128
+    additional bytes of internal data memory would be required to store those
+    registers. And the other floating point extensions would require even more
+    memory.
+  - 64-bit operations are _extremely slow_ on the 8051. Assuming there was
+    enough space somewhere for the 248-byte register file, 64-bit operations
+    would take about twice as long for the 8051 to emulate as the equivalent
+    32-bit instructions while providing little-to-no benefit on common
+    microcontroller tasks.
+  - The marginal gains of implementing those instruction sets is far outweighed
+    by the marginal cost of implementing them, in terms of how much data and
+    code memory would be required.
+    - Going from "not being able to execute any RISC-V instructions at all" to
+      "being able to execute any RV32I instruction" is a huge leap in
+      functionality. And in addition to significantly speeding up multiply and
+      divide operations, support for the "M" extension is required in order to
+      use Rust toolchains that emit compressed instructions
+      (`riscv32imc-unknown-none-elf` and `riscv32imac-unknown-none-elf`).
+      Compared to those, floating point and 64-bit support are simultaneously
+      much more costly to implement and much less useful than those other
+      extensions, at least for applications where an 8051 might being used.
 - Bootloader to dynamically load RISC-V code
   - There are simply too many potential platforms and use cases to make
     supporting this feasible. For example, many 8051-based microcontrollers use
@@ -133,4 +157,3 @@ kinds of functionality that will probably never be included in rv51.
 [new-issue]: https://github.com/cyrozap/rv51/issues/new
 [main]: src/main.S
 [regmap]: doc/Register-Mapping.ods
-[limitations]: README.md#what-are-the-limitations
