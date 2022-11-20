@@ -259,13 +259,13 @@ decode_10:
 	sjmp	.
 
 exec_ecall:
-	mov	R1, #(0x80 + (4 * 17))  ; Syscall number is in register a7 (x17).
+	mov	R1, #(rv_x0 + (4 * 17))  ; Syscall number is in register a7 (x17).
 	mov	a, @R1
 
 	; Only directly handle the "exit" syscall.
 	cjne	a, #93, exec_ecall_exception
 
-	mov	R1, #(0x80 + (4 * 10))  ; Exit retval is in register a0 (x10).
+	mov	R1, #(rv_x0 + (4 * 10))  ; Exit retval is in register a0 (x10).
 	mov	a, @R1
 
 	; Write the retval to the serial buffer, in case the debugger
