@@ -76,6 +76,9 @@ funct3	= 0x25
 rs1	= 0x26
 rs2	= 0x27
 funct7	= 0x2C
+misc	= 0x2D
+misc_bit0__new_interrupt	= (((misc - 0x20) * 8) + 0)
+misc_bit1__rv_in_interrupt	= (((misc - 0x20) * 8) + 1)
 immediate_0	= 0x28
 immediate_1	= 0x29
 immediate_2	= 0x2A
@@ -115,6 +118,22 @@ rv_x0	= 0x80
 	.org	0x0000
 reset:
 	ljmp	init
+
+	.org	0x0003
+	ljmp	isr_eint0
+
+	.org	0x000b
+	ljmp	isr_timer0
+
+	.org	0x0013
+	ljmp	isr_eint1
+
+	.org	0x001b
+	ljmp	isr_timer1
+
+	.org	0x0023
+	ljmp	isr_serial
+
 	sjmp	.
 
 init:
@@ -143,9 +162,13 @@ zero_rv_regs:
 	inc	R0
 	cjne	R0, #0, zero_rv_regs
 emu_loop:
-	; Fetch instruction
+	; Save the DPTR to the current instruction
+	; NOTE: This must always happen first.
 	mov	curr_pc_dptr_0, dpl
 	mov	curr_pc_dptr_1, dph
+
+fetch_instruction:
+	; Fetch instruction
 	clr	a
 	movc	a, @a+dptr
 	mov	instruction_0, a
@@ -163,7 +186,23 @@ emu_loop:
 	mov	instruction_3, a
 	inc	dptr
 
+	; Decode/execute instruction
 	lcall	decode_opcode
+
+	; If we're in an interrupt, don't check for new interrupts.
+	jb	misc_bit1__rv_in_interrupt, emu_loop
+
+	; Check if an interrupt was triggered.
+	jbc	misc_bit0__new_interrupt, 1$
+
+	; Next instruction
+	sjmp	emu_loop
+
+1$:
+	; Handle the interrupt.
+	lcall	interrupt_controller
+
+	; Next instruction
 	sjmp	emu_loop
 
 ; We should never get here.
@@ -242,6 +281,9 @@ exec_mret:
 	mov	a, rv_csr_mepc_1
 	addc	a, #(rv_code >> 8)
 	mov	dph, a
+
+	; Mark that we're no longer in an interrupt.
+	clr	misc_bit1__rv_in_interrupt
 
 	ret
 
@@ -3870,6 +3912,84 @@ prepare_jump_to_synchronous_trap:
 	mov	dph, a
 
 	ret
+
+interrupt_controller:
+	; Mark that we're in an interrupt now.
+	setb	misc_bit1__rv_in_interrupt
+
+	; Save the exception reason ("Machine external interrupt") in
+	; the mcause CSR.
+	mov	rv_csr_mcause, #((1 << 7) | 11)
+
+	; Calculate the RISC-V PC for the next instruction and save it
+	; in the mepc CSR.
+	mov	a, dpl
+	clr	c
+	subb	a, #(rv_code)
+	mov	rv_csr_mepc_0, a
+	mov	a, dph
+	subb	a, #(rv_code >> 8)
+	mov	rv_csr_mepc_1, a
+
+	; Set the RISC-V PC to the trap vector base address in mtvec.
+	mov	a, rv_csr_mtvec_0
+	anl	a, #0xFC
+	add	a, #(rv_code)
+	mov	dpl, a
+	mov	a, rv_csr_mtvec_1
+	addc	a, #(rv_code >> 8)
+	mov	dph, a
+
+	; Vector the interrupt based on the cause, if enabled.
+	mov	a, rv_csr_mtvec_0
+	jnb	acc.0, 1$
+
+	; Check if interrupt is asynchronous.
+	mov	a, rv_csr_mcause
+
+	; Rotate mcause left into C, simultaneously multiplying it by
+	; two.
+	clr	c
+	rlc	a
+
+	; If the carry bit is set, that means it's an async interrupt.
+	jnc	1$
+
+	; Multiply mcause by two again to get 4x the interrupt cause
+	; number.
+	clr	c
+	rlc	a
+
+	; Add 4x the interrupt cause number to the PC.
+	add	a, dpl
+	mov	dpl, a
+	clr	a
+	addc	a, dph
+	mov	dph, a
+
+1$:
+	; Not vectored or not asynchronous.
+	ret
+
+isr_eint0:
+	setb	misc_bit0__new_interrupt
+	reti
+
+isr_eint1:
+	setb	misc_bit0__new_interrupt
+	reti
+
+isr_timer0:
+	setb	misc_bit0__new_interrupt
+	reti
+
+isr_timer1:
+	setb	misc_bit0__new_interrupt
+	reti
+
+isr_serial:
+	setb	misc_bit0__new_interrupt
+	reti
 
 emulator_size:
 	; The size of the emulator, in bytes, as a little-endian 32-bit

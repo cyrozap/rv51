@@ -129,11 +129,14 @@ instructions of the RV32M Standard Extension have been implemented. The full
 list of supported instructions can be found in [Instruction
 Support][isa-support].
 
-Interrupts are not yet supported, nor is the rest of machine-mode (M-mode).
-Because of this, instead of raising an illegal instruction exception, an
-illegal instruction will either put rv51 into an infinite loop or execute
-undefined behavior. For this reason, please be sure your RISC-V code doesn't
-try to execute any instructions that are unsupported by rv51.
+Traps (interrupts and exceptions) are partially supported. Deliberate
+synchronous exceptions (e.g., EBREAK and ECALL) are confirmed to work, and
+asynchronous interrupts appear to work in simple cases, but other exceptions
+have not yet been implemented. For example, because the illegal instruction
+exception has not been implemented, illegal instructions will either put rv51
+into an infinite loop or execute undefined behavior. For this reason, please
+be sure your RISC-V code doesn't try to execute any instructions that are
+unsupported by rv51.
 
 
 ## What's the license?
