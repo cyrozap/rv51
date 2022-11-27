@@ -122,7 +122,7 @@ later][gpl].
 
 [risc-v]: https://en.wikipedia.org/wiki/RISC-V
 [8051]: https://en.wikipedia.org/wiki/Intel_MCS-51
-[sdcc]: http://sdcc.sourceforge.net/
+[sdcc]: https://sdcc.sourceforge.net/
 [gcc]: https://gcc.gnu.org/
 [llvm]: https://llvm.org/
 [rust]: https://www.rust-lang.org/
