@@ -81,20 +81,10 @@ Some suggestions for implementation are included.
     directly while decoding the compressed instruction) can be made after the
     initial, less-optimized support is added.
 - RISC-V M-mode (privileged architecture)
-  - `misa` CSR
-  - `mhartid` CSR
-  - Interrupts
-    - `mstatus` CSR
-    - `mtvec` CSR
-    - `mip` CSR
-    - `mie` CSR
-    - `mepc` CSR
-    - `mcause` CSR
   - Performance Monitor
     - `minstret` CSR
     - `mcounteren` CSR
     - `mcountinhibit` CSR
-  - MRET instruction
 
 
 ### Out of scope
