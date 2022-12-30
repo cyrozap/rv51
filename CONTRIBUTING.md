@@ -132,7 +132,7 @@ kinds of functionality that will probably never be included in rv51.
       (`riscv32imc-unknown-none-elf` and `riscv32imac-unknown-none-elf`).
       Compared to those, floating point and 64-bit support are simultaneously
       much more costly to implement and much less useful than those other
-      extensions, at least for applications where an 8051 might being used.
+      extensions, at least for applications where an 8051 might be used.
 - Bootloader to dynamically load RISC-V code
   - There are simply too many potential platforms and use cases to make
     supporting this feasible. For example, many 8051-based microcontrollers use
@@ -144,7 +144,7 @@ kinds of functionality that will probably never be included in rv51.
 - Porting to specific platforms (e.g., adding support for non-standard
   peripherals in SFR or XDATA space, extended addressing modes, firmware
   headers, etc.)
-  - There's simply too many platforms to support, and making the build
+  - There are simply too many platforms to support, and making the build
     configurable would make it very difficult to test everything due to the
     large number of possible configuration combinations.
 
