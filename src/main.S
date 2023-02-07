@@ -56,6 +56,7 @@ rv_csr_addr_mepc = 0x341
 rv_csr_addr_mcause = 0x342
 rv_csr_addr_mip = 0x344
 
+rv_csr_addr_mcycle = 0xB00
 rv_csr_addr_minstret = 0xB02
 rv_csr_addr_mcountinhibit = 0x320
 
@@ -109,7 +110,9 @@ rv_csr_mscratch_0 = 0x48
 rv_csr_mscratch_1 = 0x49
 rv_csr_mscratch_2 = 0x4A
 rv_csr_mscratch_3 = 0x4B
-stack_base = 0x4C
+rv_csr_mcycle_2 = 0x4C
+rv_csr_mcycle_3 = 0x4D
+stack_base = 0x4E
 rv_x0	= 0x80
 
 	.area	XSEG	(XDATA)
@@ -134,13 +137,35 @@ reset:
 	.org	0x0023
 	ljmp	isr_serial
 
+        .org    0x002b
+        ljmp    isr_timer2
+
 	sjmp	.
 
 init:
+        clr     EA
+
 	; Set stack pointer to scratch pad area.
 	mov	sp, #(stack_base-1)
 	; Use register bank zero.
 	anl	psw, #(~((1 << 4) | (1 << 3)))
+
+        ;; turn off other interrupt sources
+        clr     EX0
+        clr     EX1
+        clr     ET0
+        clr     ET1
+
+        ;; configure timer2 for cycle count
+        clr     a
+        mov     T2CON, a        ; 16b auto reload
+        mov     RCAP2L, #12000  ; on interrupt, reload with zero
+        mov     RCAP2H, #(12000 >> 8)
+        mov     TL2, a
+        mov     TH2, a
+        setb    TR2             ; enable T2 interrupts
+        setb    ET2
+
 	; Use dptr as the RV's PC, offset by #rv_code.
 	mov	dptr, #(rv_code)
 	; Zero all emulator state, including RISC-V CSRs and registers.
@@ -161,6 +186,9 @@ zero_rv_regs:
 	mov	@R0, #0
 	inc	R0
 	cjne	R0, #0, zero_rv_regs
+
+        setb    EA
+
 emu_loop:
 	; Save the DPTR to the current instruction
 	; NOTE: This must always happen first.
@@ -3782,6 +3810,31 @@ csr_read_internal:
 	ret
 
 7$:
+	; mcycle
+	cjne	R6, #(rv_csr_addr_mcycle), 8$
+	cjne	R7, #(rv_csr_addr_mcycle >> 8), 8$
+
+        ;; inhibit timer2 for the time needed to acquire the full 32b data
+        clr     ET2
+
+        ;; read T2 for the lowest 16b
+        mov     a, TL2
+        mov     rd_dat0, a
+        mov     a, TH2
+        mov     rd_dat1, a
+
+        ;; software count for the upper 16b
+        mov     a, rv_csr_mcycle_2
+        mov     rd_dat2, a
+        mov     a, rv_csr_mcycle_3
+        mov     rd_dat3, a
+
+        ;; restore timer2 interrupts
+        setb    ET2
+
+        ret
+
+8$:
 	; mvendorid
 	; marchid
 	; mimpid
@@ -3989,6 +4042,26 @@ isr_timer1:
 
 isr_serial:
 	setb	misc_bit0__new_interrupt
+	reti
+
+isr_timer2:
+	clr     TF2             ; reset and reload counter from RCAP2
+
+        push    PSW
+        push    a
+
+        ;; increment upper 16b
+        mov     a, rv_csr_mcycle_2
+        setb    c
+        addc    a, #0
+        mov     rv_csr_mcycle_2, a
+        mov     a, rv_csr_mcycle_3
+        addc    a, #0
+        mov     rv_csr_mcycle_3, a
+
+        pop     a
+        pop     PSW
+
 	reti
 
 emulator_size:
