@@ -216,42 +216,65 @@ decode_opcode:
 	mov	R2, a
 
 	; Opcode dispatch.
-	cjne	R2, #0x37, decode_0  ; LUI
-	ljmp	exec_lui
-decode_0:
-	cjne	R2, #0x17, decode_1  ; AUIPC
-	ljmp	exec_auipc
-decode_1:
-	cjne	R2, #0x6F, decode_2  ; JAL
-	ljmp	exec_jal
-decode_2:
-	cjne	R2, #0x67, decode_3  ; JALR
-	lcall	extract_funct3
-	; funct3 is now also in A
-	jnz	decode_3
-	ljmp	exec_jalr
-decode_3:
-	cjne	R2, #0x63, decode_4  ; BRANCH
-	ljmp	exec_branch
-decode_4:
-	cjne	R2, #0x03, decode_5  ; LOAD
+
+	; Divide valid opcodes into a rough binary tree to reduce
+	; the average number of instructions executed.
+
+	jb	a.6, decode_1XXXXXX
+decode_0XXXXXX:
+	jb	a.5, decode_01XXXXX
+decode_00XXXXX:
+	; LOAD, MISC-MEM, OP-IMM, AUIPC
+	cjne	R2, #0x03, decode_0  ; LOAD
 	ljmp	exec_load
-decode_5:
-	cjne	R2, #0x23, decode_6  ; STORE
-	ljmp	exec_store
-decode_6:
-	cjne	R2, #0x13, decode_7  ; OP-IMM
-	ljmp	exec_op_imm
-decode_7:
-	cjne	R2, #0x33, decode_8  ; OP
-	ljmp	exec_op
-decode_8:
-	cjne	R2, #0x0F, decode_9  ; MISC-MEM
+
+decode_0:
+	cjne	R2, #0x0F, decode_1  ; MISC-MEM
 	; FENCE instructions are a no-op because this virtual core is
 	; entirely in-order, meaning all memory operations are already
 	; guaranteed to finish before the instructions that follow them.
 	ret
-decode_9:
+
+decode_1:
+	cjne	R2, #0x13, decode_2  ; OP-IMM
+	ljmp	exec_op_imm
+
+decode_2:
+	cjne	R2, #0x17, decode_10 ; AUIPC
+	ljmp	exec_auipc
+
+decode_01XXXXX:
+	; STORE, OP, LUI
+	cjne	R2, #0x23, decode_3  ; STORE
+	ljmp	exec_store
+
+decode_3:
+	cjne	R2, #0x33, decode_4  ; OP
+	ljmp	exec_op
+
+decode_4:
+	cjne	R2, #0x37, decode_10 ; LUI
+	ljmp	exec_lui
+
+decode_1XXXXXX:
+	jnb	a.2, decode_1XXX0XX
+decode_1XXX1XX:
+	; JAL, JALR
+	cjne	R2, #0x6F, decode_5  ; JAL
+	ljmp	exec_jal
+
+decode_5:
+	cjne	R2, #0x67, decode_10  ; JALR
+	lcall	extract_funct3
+	; funct3 is now also in A
+	jnz	decode_10
+	ljmp	exec_jalr
+
+decode_1XXX0XX:
+	; BRANCH, SYSTEM
+	cjne	R2, #0x63, decode_7  ; BRANCH
+	ljmp	exec_branch
+decode_7:
 	cjne	R2, #0x73, decode_10  ; SYSTEM
 	lcall	extract_funct3
 	; funct3 is now also in A
