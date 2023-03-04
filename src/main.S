@@ -1388,9 +1388,6 @@ sfr_write_jump_table_hi:
 	sfr_write_case	0xFE
 	sfr_write_case	0xFF
 
-	; Default case.
-	ret
-
 exec_op_imm:
 	lcall	extract_rd
 
