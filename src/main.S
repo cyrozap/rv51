@@ -404,7 +404,7 @@ exec_load_rd_not_zero:
 	; The data to LOAD gets stored in rd, so load rd into R0.
 	lcall	set_dst_to_rd_iram_addr
 
-	; Check what address space we're reading.
+	; Check what address space we're reading from.
 	clr	c
 	mov	a, rs1_dat3
 	subb	a, #((rv_rom_base - rv_ram_base) >> 24)
@@ -1099,7 +1099,7 @@ exec_store:
 	; The data to STORE comes from rs2, so load rs2 into R1.
 	lcall	set_src_to_rs2_iram_addr
 
-	; Check what address space we're reading.
+	; Check what address space we're writing to.
 	clr	c
 	mov	a, rs1_dat3
 	subb	a, #((rv_rom_base - rv_ram_base) >> 24)
