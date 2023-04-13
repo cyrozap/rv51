@@ -17,7 +17,7 @@
 
 
 AS := sdas8051
-ASFLAGS := -l -o -s
+ASFLAGS := -l -o -s -p
 CC := sdcc
 CFLAGS := -mmcs51 --std-sdcc11 --model-small --stack-auto
 OBJCOPY := sdobjcopy
