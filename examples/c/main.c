@@ -25,6 +25,20 @@ volatile uint32_t nonzero_initialized = 0x12345678;
 
 static uint8_t volatile * const sbuf = (uint8_t volatile *)0xC0000099;
 
+#define SYS_memset 1025
+static uintptr_t syscall(uintptr_t which, uint32_t arg0, uint32_t arg1, uint32_t arg2)
+{
+        register uint32_t a7 asm ("a7") = which;
+        register uint32_t a0 asm ("a0") = arg0;
+        register uint32_t a1 asm ("a1") = arg1;
+        register uint32_t a2 asm ("a2") = arg2;
+
+        asm volatile("ecall" :: "r"(a7), "r"(a0), "r"(a1), "r"(a2) );
+        return arg0;
+}
+
+
+
 void * memcpy (void * destination, void const * source, size_t num) {
 	for (size_t i = 0; i < num; i++)
 		((uint8_t *)destination)[i] = ((uint8_t *)source)[i];
@@ -33,10 +47,8 @@ void * memcpy (void * destination, void const * source, size_t num) {
 }
 
 void * memset (void * ptr, int value, size_t num) {
-	for (size_t i = 0; i < num; i++)
-		((uint8_t *)ptr)[i] = (uint8_t)value;
-
-	return ptr;
+	/* use system call */
+	return (void*)syscall(SYS_memset, ptr, value, num);
 }
 
 static void putchar(char c) {
