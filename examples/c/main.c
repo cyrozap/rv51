@@ -25,6 +25,7 @@ volatile uint32_t nonzero_initialized = 0x12345678;
 
 static uint8_t volatile * const sbuf = (uint8_t volatile *)0xC0000099;
 
+#define SYS_memcpy 1024
 #define SYS_memset 1025
 static uintptr_t syscall(uintptr_t which, uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
@@ -40,15 +41,12 @@ static uintptr_t syscall(uintptr_t which, uint32_t arg0, uint32_t arg1, uint32_t
 
 
 void * memcpy (void * destination, void const * source, size_t num) {
-	for (size_t i = 0; i < num; i++)
-		((uint8_t *)destination)[i] = ((uint8_t *)source)[i];
-
-	return destination;
+	/* use system call */
+	return (void*)syscall(SYS_memcpy, (uintptr_t)destination, (uintptr_t)source, num);
 }
 
 void * memset (void * ptr, int value, size_t num) {
-	/* use system call */
-	return (void*)syscall(SYS_memset, ptr, value, num);
+	return (void*)syscall(SYS_memset, (uintptr_t)ptr, value, num);
 }
 
 static void putchar(char c) {
