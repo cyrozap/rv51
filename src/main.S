@@ -342,39 +342,45 @@ exec_ecall:
 	sjmp	.
 
 exec_ecall_notexit:
-	; there may ultimately be many functions here
-	; for now it's just memset (0x0401)
-	cjne    a, #1, exec_ecall_exception
+        ;  check syscall for correctness
+        mov     B, a                        ; remember syscall LSB
+        anl     a, #0xfe
+        cpl     a.2                         ; should be 1 now
+	mov	R1, #(rv_x0 + (4 * 17) + 1) ; MSB of syscall number
+	xrl	a, @R1                      ; a.2 should be 0 now
+        jz      syscall_OK
+        ljmp    exec_ecall_exception ; MSB !=4 or LSB > 1
 
-	; check MSB
-	inc     R1
-	cjne    @R1, #0x04, exec_ecall_exception
-
-exec_ecall_memset:
-	push    dph
-	push    dpl
-
-	;; check the destination address space
+syscall_OK:
+        ; check destination address space
 	mov     R1, #(rv_x0 + (4 * 10) + 3) ; high byte of dst (a0)
 	mov     a, @R1
-	jb      a.7, memset_ret  ; read-only or SFR memory
-
-	dec     R1
-	dec     R1
-	mov     dph, @R1         ; MSB of dst
-	dec     R1
-	mov     dpl, @R1         ; LSB of dst
-
+	jnb     a.7, dest_OK  ; read-only or SFR memory
+        ret
+dest_OK:
 	mov     R1, #(rv_x0 + (4 * 12)) ; LSB of count (a2) = 3rd param (n)
 	mov     (0 + 6), @R1            ; set into R6 direct (we don't use banks)
 	inc     R1
 	mov     (0 + 7), @R1            ; R7 = MSB of count
+        mov     a, R6
+        orl     a, R7
+        jnz     not_empty
+        ret                             ; nothing to do
 
-	;; terminate early if 0 bytes to copy
-	orl     a, R6
-	jz      memset_ret
+not_empty:
+        push    dph
+        push    dpl
 
-	;; get the value to set
+        jnb     B.0, exec_ecall_memcpy
+
+exec_ecall_memset:
+        ; get dest address into DPTR
+	mov     R1, #(rv_x0 + (4 * 10) + 1) ; byte 1 of dst (a0)
+	mov     dph, @R1         ; MSB of dst
+	dec     R1
+	mov     dpl, @R1         ; LSB of dst
+
+	; get the value to set
 	mov     R1, #(rv_x0 + (4 * 11)) ; low byte of a1 = 2nd param (c)
         mov     a, @R1
 
@@ -382,14 +388,94 @@ memset_loop:
 	movx    @DPTR, a
 	inc     DPTR
 	djnz    R6, memset_loop
-	;; inner 256b loop has terminated, restart if R7 nonzero
+	; inner 256b loop has terminated, restart if R7 nonzero
 	dec     R7
 	cjne    R7, #0xff, memset_loop
 
-memset_ret:
-	pop     dpl
-	pop     dph
-	ret
+        sjmp    memcpy_ret
+
+exec_ecall_memcpy:
+        ; get dest address into R5:R4
+	mov     R1, #(rv_x0 + (4 * 10) + 1) ; byte 1 of dst (a0)
+	mov     (0 + 5), @R1
+	dec     R1
+	mov     (0 + 4), @R1
+
+        ; get source address
+	mov     R1, #(rv_x0 + (4 * 11) + 3) ; high byte of src (a1)
+	mov     a, @R1
+
+        dec     R1
+        dec     R1
+        mov     dph, @R1    ; MSB of source address
+        dec     R1
+        mov     dpl, @R1    ; MSB of source address
+
+	; check the source address space
+	jnb     a.6, not_sfr  ; ignore SFR memory, for now
+        sjmp    memcpy_ret
+not_sfr:
+        jb      a.7, exec_memcpy_romsrc
+
+memcpy_loop:
+	movx    a, @DPTR
+        inc     DPTR
+        ; switch dph/dpl with R5/R4
+        xch     a, R4
+        xch     a, dpl
+        xch     a, R4
+        xch     a, R5
+        xch     a, dph
+        xch     a, R5
+	movx    @DPTR, a
+	inc     DPTR
+        xch     a, R4
+        xch     a, dpl
+        xch     a, R4
+        xch     a, R5
+        xch     a, dph
+        xch     a, R5
+        ; decrement R7:R6 and continue if non zero
+	djnz    R6, memcpy_loop
+        dec     R7
+        cjne    R7, #0xff, memcpy_loop
+        sjmp    memcpy_ret
+
+exec_memcpy_romsrc:
+        ; adjust DPTR for rv_code
+        mov     a, dpl
+        add     a, #(rv_code)
+        mov     dpl, a
+        mov     a, dph
+        addc    a, #(rv_code >> 8)
+        mov     dph, a
+
+memcpy_loop_romsrc:
+        clr     a
+	movc    a, @a+DPTR
+        inc     DPTR
+        xch     a, R4
+        xch     a, dpl
+        xch     a, R4
+        xch     a, R5
+        xch     a, dph
+        xch     a, R5
+	movx    @DPTR, a
+	inc     DPTR
+        xch     a, R4
+        xch     a, dpl
+        xch     a, R4
+        xch     a, R5
+        xch     a, dph
+        xch     a, R5
+	djnz    R6, memcpy_loop_romsrc
+        dec     R7
+        cjne    R7, #0xff, memcpy_loop_romsrc
+
+memcpy_ret:
+        pop     dpl
+        pop     dph
+        ret
 
 exec_ecall_exception:
 	; Save the exception reason ("Environment call from M-mode") in
