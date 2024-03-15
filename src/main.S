@@ -437,9 +437,9 @@ memcpy_loop:
         xch     a, R5
         ; decrement R7:R6 and continue if non zero
 	djnz    R6, memcpy_loop
-        dec     R7
-        cjne    R7, #0xff, memcpy_loop
-        sjmp    memcpy_ret
+        mov     a, R7
+        jz      memcpy_ret
+        djnz    R7, memcpy_loop
 
 exec_memcpy_romsrc:
         ; adjust DPTR for rv_code
@@ -469,8 +469,9 @@ memcpy_loop_romsrc:
         xch     a, dph
         xch     a, R5
 	djnz    R6, memcpy_loop_romsrc
-        dec     R7
-        cjne    R7, #0xff, memcpy_loop_romsrc
+        mov     a, R7
+        jz      memcpy_ret
+        djnz    R7, memcpy_loop_romsrc
 
 memcpy_ret:
         pop     dpl
