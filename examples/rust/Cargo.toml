@@ -2,9 +2,9 @@
 name = "hello-rv32"
 version = "0.1.0"
 license = "0BSD"
-edition = "2018"
+edition = "2021"
 
 [dependencies]
-riscv = "0.9.0"
-riscv-rt = "0.10.0"
-volatile-register = "0.2.1"
+riscv = "0.11.1"
+riscv-rt = "0.12.2"
+volatile-register = "0.2.2"
