@@ -112,6 +112,11 @@ rv_csr_mscratch_3 = 0x4B
 stack_base = 0x4C
 rv_x0	= 0x80
 
+.ifndef NUM_INTERRUPTS
+NUM_INTERRUPTS = 5
+.endif
+interrupt_vector = 0x0003
+
 	.area	XSEG	(XDATA)
 	.area	PSEG	(PAG,XDATA)
 	.area	HOME	(ABS,CODE)
@@ -119,20 +124,13 @@ rv_x0	= 0x80
 reset:
 	ljmp	init
 
-	.org	0x0003
-	ljmp	isr_eint0
-
-	.org	0x000b
-	ljmp	isr_timer0
-
-	.org	0x0013
-	ljmp	isr_eint1
-
-	.org	0x001b
-	ljmp	isr_timer1
-
-	.org	0x0023
-	ljmp	isr_serial
+	.org	interrupt_vector
+	.rept	NUM_INTERRUPTS
+	setb	misc_bit0__new_interrupt
+	reti
+interrupt_vector = interrupt_vector + 8
+	.org	interrupt_vector
+	.endm
 
 	sjmp	.
 
@@ -3990,26 +3988,6 @@ interrupt_controller:
 1$:
 	; Not vectored or not asynchronous.
 	ret
-
-isr_eint0:
-	setb	misc_bit0__new_interrupt
-	reti
-
-isr_eint1:
-	setb	misc_bit0__new_interrupt
-	reti
-
-isr_timer0:
-	setb	misc_bit0__new_interrupt
-	reti
-
-isr_timer1:
-	setb	misc_bit0__new_interrupt
-	reti
-
-isr_serial:
-	setb	misc_bit0__new_interrupt
-	reti
 
 emulator_size:
 	; The size of the emulator, in bytes, as a little-endian 32-bit
