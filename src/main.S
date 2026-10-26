@@ -33,11 +33,17 @@
 ;   functions can modify R1.
 ; - Only the "rv_calc_curr_pc" and "rv_calc_next_pc" functions can
 ;   modify rv_pc_[0-1].
+; - Due to limitations in sdas8051, all constants larger than 24 bits MUST be
+;   broken up into 16-bit halves, their names suffixed with "_hi" and "_lo".
 
-rv_ram_base = 0x00000000
-rv_rom_base = 0x80000000
-rv_sfr_base = 0xC0000000
-rv_hyp_base = 0xE0000000
+rv_ram_base_lo = 0x0000
+rv_ram_base_hi = 0x0000
+rv_rom_base_lo = 0x0000
+rv_rom_base_hi = 0x8000
+rv_sfr_base_lo = 0x0000
+rv_sfr_base_hi = 0xC000
+rv_hyp_base_lo = 0x0000
+rv_hyp_base_hi = 0xE000
 
 ; CSR addresses
 rv_csr_addr_mvendorid = 0xF11
@@ -60,11 +66,16 @@ rv_csr_addr_minstret = 0xB02
 rv_csr_addr_mcountinhibit = 0x320
 
 ; CSR read-only values
-rv_csr_val_mvendorid = 0x00000000
-rv_csr_val_marchid = 0x00000000
-rv_csr_val_mimpid = 0x00000000
-rv_csr_val_mhartid = 0x00000000
-rv_csr_val_misa = ((1 << 30) | (1 << 12) | (1 << 8))
+rv_csr_val_mvendorid_lo = 0x0000
+rv_csr_val_mvendorid_hi = 0x0000
+rv_csr_val_marchid_lo = 0x0000
+rv_csr_val_marchid_hi = 0x0000
+rv_csr_val_mimpid_lo = 0x0000
+rv_csr_val_mimpid_hi = 0x0000
+rv_csr_val_mhartid_lo = 0x0000
+rv_csr_val_mhartid_hi = 0x0000
+rv_csr_val_misa_lo = ((1 << 12) | (1 << 8))
+rv_csr_val_misa_hi = (1 << 14)  ; ((1 << 30) >> 16)
 
 ; Global variables
 instruction_0	= 0x20
@@ -405,11 +416,11 @@ exec_load_rd_not_zero:
 	; Check what address space we're reading from.
 	clr	c
 	mov	a, rs1_dat3
-	subb	a, #((rv_rom_base - rv_ram_base) >> 24)
+	subb	a, #((rv_rom_base_hi - rv_ram_base_hi) >> 8)
 	jc	exec_load_lt_80_xdata
-	subb	a, #((rv_sfr_base - rv_rom_base) >> 24)
+	subb	a, #((rv_sfr_base_hi - rv_rom_base_hi) >> 8)
 	jc	exec_load_lt_C0_code
-	subb	a, #((rv_hyp_base - rv_sfr_base) >> 24)
+	subb	a, #((rv_hyp_base_hi - rv_sfr_base_hi) >> 8)
 	jc	exec_load_lt_E0_sfr
 	ljmp	exec_load_ge_E0_hyp
 
@@ -1006,9 +1017,9 @@ exec_jalr:
 	inc	R0
 	mov	@R0, rv_pc_1
 	inc	R0
-	mov	@R0, #(rv_rom_base >> 16)
+	mov	@R0, #(rv_rom_base_hi)
 	inc	R0
-	mov	@R0, #(rv_rom_base >> 24)
+	mov	@R0, #(rv_rom_base_hi >> 8)
 
 exec_jalr_rd_zero:
 	; To get the real jump address, add the virtual jump address to
@@ -1037,9 +1048,9 @@ exec_jal:
 	inc	R0
 	mov	@R0, rv_pc_1
 	inc	R0
-	mov	@R0, #(rv_rom_base >> 16)
+	mov	@R0, #(rv_rom_base_hi)
 	inc	R0
-	mov	@R0, #(rv_rom_base >> 24)
+	mov	@R0, #(rv_rom_base_hi >> 8)
 
 exec_jal_rd_zero:
 jump_to_current_PC_plus_immediate:
@@ -1100,11 +1111,11 @@ exec_store:
 	; Check what address space we're writing to.
 	clr	c
 	mov	a, rs1_dat3
-	subb	a, #((rv_rom_base - rv_ram_base) >> 24)
+	subb	a, #((rv_rom_base_hi - rv_ram_base_hi) >> 8)
 	jc	exec_store_lt_80_xdata
-	subb	a, #((rv_sfr_base - rv_rom_base) >> 24)
+	subb	a, #((rv_sfr_base_hi - rv_rom_base_hi) >> 8)
 	jc	exec_store_lt_C0_code
-	subb	a, #((rv_hyp_base - rv_sfr_base) >> 24)
+	subb	a, #((rv_hyp_base_hi - rv_sfr_base_hi) >> 8)
 	jc	exec_store_lt_E0_sfr
 	sjmp	exec_store_ge_E0_hyp
 
@@ -3217,12 +3228,12 @@ exec_auipc_rd_not_zero:
 	mov	@R0, a
 	inc	R0
 
-	mov	a, #(rv_rom_base >> 16)
+	mov	a, #(rv_rom_base_hi)
 	addc	a, immediate_2
 	mov	@R0, a
 	inc	R0
 
-	mov	a, #(rv_rom_base >> 24)
+	mov	a, #(rv_rom_base_hi >> 8)
 	addc	a, immediate_3
 	mov	@R0, a
 
@@ -3724,10 +3735,10 @@ csr_read_internal:
 	cjne	R6, #(rv_csr_addr_misa), 3$
 	cjne	R7, #(rv_csr_addr_misa >> 8), 3$
 
-	mov	rd_dat0, #(rv_csr_val_misa)
-	mov	rd_dat1, #(rv_csr_val_misa >> 8)
-	mov	rd_dat2, #(rv_csr_val_misa >> 16)
-	mov	rd_dat3, #(rv_csr_val_misa >> 24)
+	mov	rd_dat0, #(rv_csr_val_misa_lo)
+	mov	rd_dat1, #(rv_csr_val_misa_lo >> 8)
+	mov	rd_dat2, #(rv_csr_val_misa_hi)
+	mov	rd_dat3, #(rv_csr_val_misa_hi >> 8)
 
 	ret
 
@@ -3738,8 +3749,8 @@ csr_read_internal:
 
 	mov	rd_dat0, rv_csr_mtvec_0
 	mov	rd_dat1, rv_csr_mtvec_1
-	mov	rd_dat2, #(rv_rom_base >> 16)
-	mov	rd_dat3, #(rv_rom_base >> 24)
+	mov	rd_dat2, #(rv_rom_base_hi)
+	mov	rd_dat3, #(rv_rom_base_hi >> 8)
 
 	ret
 
@@ -3750,8 +3761,8 @@ csr_read_internal:
 
 	mov	rd_dat0, rv_csr_mepc_0
 	mov	rd_dat1, rv_csr_mepc_1
-	mov	rd_dat2, #(rv_rom_base >> 16)
-	mov	rd_dat3, #(rv_rom_base >> 24)
+	mov	rd_dat2, #(rv_rom_base_hi)
+	mov	rd_dat3, #(rv_rom_base_hi >> 8)
 
 	ret
 
